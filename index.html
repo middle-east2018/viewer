@@ -295,7 +295,9 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 
 // ================================================================ المشهد
 const view = $('view');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+// التنعيم (MSAA) على الشاشات العادية بس. شاشات الموبايل دقتها 2× أو أكتر، والرسم بيتعمل بدقة 2× فالحواف ناعمة من غيره،
+// والتنعيم فوقها بيتعب كارت الشاشة من غير فرق يبان
+const renderer = new THREE.WebGLRenderer({ antialias: devicePixelRatio < 1.75 });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.localClippingEnabled = true;
 renderer.setClearColor(0xe6eaef);
@@ -309,7 +311,7 @@ scene.add(camera);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x8a96a6, 1.6));
 const head = new THREE.DirectionalLight(0xffffff, 1.6); head.position.set(0.4, 0.6, 1); camera.add(head);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; controls.dampingFactor = 0.18;   // اللف بيكمّل بنعومة بعد ما تسيب
+controls.enableDamping = false;   // الموديل لازق في الصباع من غير تأخير (الـ damping كان بيخليه يمشي وراه)
 controls.zoomToCursor = true;
 controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
 
@@ -333,11 +335,13 @@ function bodyMaterial(opts) {
     color: 0xc6ccd4, specular: 0x2a2f36, shininess: 35, side: THREE.DoubleSide,
     polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, clippingPlanes: clipping,
   }, opts));
+  // اللون البرتقاني للوش اللي من ورا + gl_FragDepth بيشتغلوا وقت السكشن بس (ME_CUT). كتابة gl_FragDepth بتبطّل early-Z
+  // في كارت الشاشة (إنه يتجاهل الحاجة المستخبية قبل ما يلوّنها)، وده كان بيلوّن كل طبقات المواسير اللي فوق بعض من غير داعي
   m.onBeforeCompile = sh => {
     sh.uniforms.uCut = cutOn;
     sh.fragmentShader = 'uniform float uCut;\n' + sh.fragmentShader.replace('#include <dithering_fragment>',
-      '#include <dithering_fragment>\n if (!gl_FrontFacing && uCut > 0.5) gl_FragColor = vec4(0.85, 0.33, 0.18, gl_FragColor.a);' +
-      '\n gl_FragDepth = gl_FragCoord.z + (gl_FrontFacing ? 0.0 : fwidth(gl_FragCoord.z) * 4.0 + 2e-6);');
+      '#include <dithering_fragment>\n#ifdef ME_CUT\n if (!gl_FrontFacing && uCut > 0.5) gl_FragColor = vec4(0.85, 0.33, 0.18, gl_FragColor.a);' +
+      '\n gl_FragDepth = gl_FragCoord.z + (gl_FrontFacing ? 0.0 : fwidth(gl_FragCoord.z) * 4.0 + 2e-6);\n#endif');
   };
   return m;
 }
@@ -1015,7 +1019,7 @@ function applyCut() {
     cutOn.value = on ? 1 : 0;
     // من غير قطع الوش اللي من ورا مش باين أصلاً، فمابنرسموش (نص الشغل على كارت الشاشة). مع القطع لازم يترسم برتقاني
     [M.body, M.sel].forEach(m => m.side = on ? THREE.DoubleSide : THREE.FrontSide);
-    Object.values(M).forEach(m => m.needsUpdate = true);
+    Object.values(M).forEach(m => { if (m.isMeshPhongMaterial) { if (on) m.defines = Object.assign({}, m.defines, { ME_CUT: '' }); else if (m.defines) delete m.defines.ME_CUT; } m.needsUpdate = true; });
   }
   syncSectionUI(); scheduleContours(); req();
 }
@@ -1574,7 +1578,7 @@ function drawEnt(e, group, hov) {
 // ================================================================ المؤشر + يد التحكم + العدسة
 let mode = 'view';
 const cur = { x: 0, y: 0 };
-let hoverEnt = null, lastProbe = 0;
+let hoverEnt = null, lastProbe = 0, probeMs = 8;
 function placeCursor() {
   cur.x = Math.max(4, Math.min(VW - 4, cur.x)); cur.y = Math.max(4, Math.min(VH - 4, cur.y));
   $('cursor').style.left = cur.x + 'px'; $('cursor').style.top = (cur.y + 52) + 'px';
@@ -1835,7 +1839,7 @@ document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => openShe
 const loupeCam = new THREE.PerspectiveCamera();
 const LOUPE = 124, ZOOM = 4;
 // ================================================================ الجودة وقت الحركة
-// وانت بتلف أو تقرّب: التفاصيل المسموحة لحد بكسل واحد (بدل نص)، ولو الموبايل مابيلحقش (الرسمة أبطأ من 30 مللي)
+// وانت بتلف أو تقرّب: التفاصيل المسموحة لحد بكسل واحد (بدل نص)، ولو الموبايل مابيلحقش 50 صورة في الثانية (الرسمة أبطأ من 20 مللي)
 // دقة الشاشة بتنزل خطوة خطوة. أول ما الحركة تقف بـ 0.2 ثانية: رسمة كاملة بأعلى جودة. يعني الصورة الواقفة دايماً بأعلى جودة،
 // والحركة دايماً ناعمة. والقياس مالوش دعوة بده (من الأرقام المضبوطة).
 const DPR_HI = Math.min(devicePixelRatio, 2), DPR_STEPS = [DPR_HI, Math.min(DPR_HI, 1.5), Math.min(DPR_HI, 1), Math.min(DPR_HI, 0.75)];
@@ -1853,7 +1857,7 @@ function qualityTick(now) {
   if (moving) {
     if (lastFrame && now - lastFrame < 500) frameEma = frameEma * 0.8 + (now - lastFrame) * 0.2;
     lastFrame = now; drawTau = 1;
-    if (frameEma > 30 && dprStep < DPR_STEPS.length - 1 && DPR_STEPS[dprStep + 1] < DPR_STEPS[dprStep]) { dprStep++; frameEma = 20; renderer.setPixelRatio(DPR_STEPS[dprStep]); }
+    if (frameEma > 20 && dprStep < DPR_STEPS.length - 1 && DPR_STEPS[dprStep + 1] < DPR_STEPS[dprStep]) { dprStep++; frameEma = 16; renderer.setPixelRatio(DPR_STEPS[dprStep]); }
   } else if (was) {
     lastFrame = 0; drawTau = 0.5; if (dprStep) { dprStep = 0; renderer.setPixelRatio(DPR_HI); } req();
   }
@@ -1864,7 +1868,8 @@ function loop(now) {
   controls.update();   // الحركة الناعمة (damping) بتكمّل شوية بعد ما تشيل صباعك
   qualityTick(now);
   stepJoy(now);
-  if (mode === 'measure' && hoverDirty && now - lastProbe > 45) { hoverDirty = false; lastProbe = now; updateHover(); }
+  // المؤشر بيدوّر على اللي تحته مع كل صورة، إلا لو البحث نفسه تقيل على الجهاز ده (ساعتها بيستنى ضعف وقته)
+  if (mode === 'measure' && hoverDirty && now - lastProbe > Math.max(0, 2 * probeMs - 16)) { hoverDirty = false; lastProbe = now; const t0 = performance.now(); updateHover(); probeMs = probeMs * 0.7 + (performance.now() - t0) * 0.3; }
   if (!needRender) return; needRender = false;
   // نقط التحديد: نص قطرها 5 بكسل على الشاشة مهما كان بعدها (مش مربوطة بحجم الموديل)
   const k1 = pixW(1) * 5;
