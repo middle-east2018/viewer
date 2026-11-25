@@ -585,7 +585,13 @@ async function onHomeClick(ev) {
   if (t.id === 'engIn') return engLogin();
   if (t.id === 'engOut') { localStorage.removeItem('me_eng'); renderHome(); return; }
   if (t.id === 'upNew') return uploadDialog(null);
-  if (t.id === 'engRefresh') return loadEngList();
+  if (t.id === 'engRefresh') {   // بيبان إنه شغال: الزرار بيتقفل ويكتب «بيحدّث...»، واللستة بتبهت لحد ما الجديدة توصل
+    if (t.disabled) return;
+    t.disabled = true; t.textContent = 'بيحدّث...'; $('engList').style.opacity = '.45';
+    const ok = await loadEngList();
+    const btn = $('engRefresh'); if (btn) { btn.disabled = false; btn.textContent = 'تحديث اللستة'; } if ($('engList')) $('engList').style.opacity = '';
+    if (ok) toast('اللستة اتحدّثت ✓ (' + engModels.length + ' موديل)'); return;
+  }
   if (t.id === 'reconvAll') return reconvertAll();
   const id = t.dataset.id, m = engModels && engModels.find(x => x.id === id); if (!m) return;
   if (t.dataset.act === 'share') return shareDialog(m);
@@ -627,7 +633,7 @@ function engLogin() {
 }
 async function loadEngList() {
   const box = $('engList'); if (!box) return;
-  let r; try { r = await engCall({ fn: 'list' }); } catch (e) { box.innerHTML = '<p class="err">ما قدرتش أجيب اللستة.</p>'; return; }
+  let r; try { r = await engCall({ fn: 'list' }); } catch (e) { box.innerHTML = '<p class="err">ما قدرتش أجيب اللستة.</p>'; return false; }
   engModels = r.models;
   const old = engModels.filter(m => m.fmt < APP_FMT && m.stepParts > 0);
   let h = '';
@@ -641,6 +647,7 @@ async function loadEngList() {
       <button class="sbtn" data-act="toggle" data-id="${m.id}">${m.status === 'open' ? 'اقفل' : 'افتح تاني'}</button><button class="sbtn red" data-act="remove" data-id="${m.id}">امسح</button></div></div>`;
   });
   box.innerHTML = h;
+  return true;
 }
 
 // ---------------------------------------------------------------- كلمة سر الموديل (جزء مشترك في النوافذ)
@@ -679,14 +686,15 @@ function uploadDialog(existing) {
     if (!pw) return err.textContent = 'اكتب كلمة السر، أو اختار "من غير كلمة سر"';
     err.textContent = ''; b.querySelector('#upBtns').style.display = 'none'; b.querySelector('#upProg').style.display = 'block';
     b.querySelectorAll('input').forEach(x => x.disabled = true);
+    const P = progBar(b.querySelector('#upBar'));
     try {
-      const m = await publishStep({ file: f, name, pw, id: existing ? existing.id : null, onStep: (i, pct, txt) => {
+      const m = await publishStep({ file: f, name, pw, id: existing ? existing.id : null, P, onStep: (i, txt) => {
         b.querySelectorAll('#upSteps li').forEach((li, k) => { li.className = k < i ? 'ok' : k === i ? 'cur' : ''; });
-        if (txt) b.querySelectorAll('#upSteps li')[i].dataset.t = txt, b.querySelectorAll('#upSteps li')[i].textContent = txt;
-        b.querySelector('#upBar').style.width = pct + '%';
+        if (txt && b.querySelectorAll('#upSteps li')[i]) b.querySelectorAll('#upSteps li')[i].textContent = txt;
       } });
-      closeDialog(); loadEngList(); shareDialog(m, true);
+      P.stop(); closeDialog(); loadEngList(); shareDialog(m, true);
     } catch (e) {
+      P.stop();
       if (e.message === 'auth') return;
       err.textContent = 'ما اتنشرش: ' + (e instanceof Offline ? 'النت فصل' : e.message);
       b.querySelector('#upBtns').style.display = 'flex'; b.querySelectorAll('input').forEach(x => x.disabled = false);
@@ -716,22 +724,50 @@ async function uploadBytes(bytes, kind, onPart) {
   }
   return ids;
 }
-async function publishStep({ file, name, pw, id, onStep }) {
-  onStep(0, 3);
+// ---------------------------------------------------------------- شريط التقدم
+// set() = قيمة حقيقية (خطوة خلصت)، و creep() = بيزحف بالراحة ناحية هدف في الخطوات الطويلة اللي مالهاش عدّاد،
+// علشان الشريط مايقفش أبداً والمستخدم مايحسش إن البرنامج علّق. عمره ما بيرجع لورا.
+function progBar(el) {
+  let cur = 0, tgt = 0, tau = 1;
+  const draw = () => { el.style.width = cur.toFixed(1) + '%'; };
+  const tm = setInterval(() => { if (!el.isConnected) return clearInterval(tm); if (cur < tgt - 0.05) { cur += (tgt - cur) * (1 - Math.exp(-0.25 / tau)); draw(); } }, 250);
+  return {
+    set(p) { cur = Math.max(cur, Math.min(100, p)); tgt = Math.max(tgt, cur); draw(); },
+    creep(to, sec) { tgt = Math.max(cur, Math.min(100, to)); tau = Math.max(0.4, sec / 2.5); },
+    stop() { clearInterval(tm); },
+  };
+}
+// التحويل جوه الـ worker: رسايله بتحرّك الشريط بين a و b (القراية، وبعدين كل قطعة حسب حجمها، وبعدين الضغط)
+function convProg(P, a, b, stepBytes, say) {
+  const mb = stepBytes / 1e6, at = f => a + (b - a) * f;
+  // القراية (occt) هي أطول خطوة ومالهاش عدّاد: على لوسافر 33 ميجا خدت ~45 ثانية، فالتقدير 1.5 ثانية لكل ميجا
+  P.creep(at(0.55), 5 + mb * 1.5); say('بيقرا ملف الـ STEP (أطول خطوة)');
+  return (stage, info) => {
+    if (stage === 'read') { P.set(at(0.55)); P.creep(at(0.58), 3); say('بيحلل القطع: 0 من ' + info.bodies); }
+    else if (stage === 'body') { const f = Math.min(1, info.f || 0); P.set(at(0.55 + 0.37 * f)); P.creep(at(0.55 + 0.37 * Math.min(1, f + 0.05)), 4); say('بيحلل القطع: ' + info.i + ' من ' + info.n); }
+    else if (stage === 'analysed') { P.set(at(0.92)); P.creep(at(0.99), 2 + mb * 0.3); say('بيضغط الموديل'); }
+    else if (stage === 'done') P.set(at(1));
+  };
+}
+const PART_SEC = 6;   // تقدير: رفع أو تنزيل جزء 4 ميجا من جوجل
+
+async function publishStep({ file, name, pw, id, onStep, P }) {
+  onStep(0); P.set(1); P.creep(4, 1 + file.size / 50e6);
   const step = new Uint8Array(await file.arrayBuffer());
-  onStep(1, 8);
+  onStep(1);
   const t0 = Date.now();
-  const conv = await convertInWorker(step.slice(), name, file.name, (st) => { if (st === 'read') onStep(1, 55, 'بيحوّل الموديل: بيحلل الأوجه والحروف'); });
-  onStep(2, 62, 'بيضغط الـ STEP الأصلي');
+  const conv = await convertInWorker(step.slice(), name, file.name, convProg(P, 4, 62, step.length, t => onStep(1, 'بيحوّل الموديل: ' + t)));
+  onStep(2, 'بيضغط الـ STEP الأصلي'); P.set(62); P.creep(65, 1 + step.length / 20e6);
   const stepGz = await gz(step);
   const total = Math.ceil(conv.glb.length / CHUNK) + Math.ceil(stepGz.length / CHUNK); let done = 0;
-  const tick = () => { done++; onStep(3, 65 + 30 * done / total, 'بيرفع: ' + done + ' من ' + total + ' (' + MB(conv.glb.length + stepGz.length) + ')'); };
-  onStep(3, 65, 'بيرفع');
+  const at = k => 65 + 32 * k / total;
+  const tick = () => { done++; P.set(at(done)); if (done < total) P.creep(at(done + 1), PART_SEC); onStep(3, 'بيرفع: ' + done + ' من ' + total + ' (' + MB(conv.glb.length + stepGz.length) + ')'); };
+  onStep(3, 'بيرفع: 0 من ' + total + ' (' + MB(conv.glb.length + stepGz.length) + ')'); P.set(65); P.creep(at(1), PART_SEC);
   const glbParts = await uploadBytes(conv.glb, 'glb', tick);
   const stepParts = await uploadBytes(stepGz, 'step', tick);
-  onStep(4, 97);
+  onStep(4); P.set(97); P.creep(99.5, 4);
   const r = await engCall({ fn: 'publish', id: id || undefined, name, pw, glbParts, glbSize: conv.glb.length, stepParts, stepSize: step.length, stepName: file.name, fmt: conv.fmt, stats: Object.assign({}, conv.stats, { convertMs: Date.now() - t0 }) });
-  onStep(5, 100);
+  onStep(5); P.set(100);
   return r.model;
 }
 
@@ -787,22 +823,30 @@ async function reconvertAll() {
   if (!list.length) return;
   if (!await confirmBox('تحديث الموديلات', 'هيتعاد تحويل ' + list.length + ' موديل من الـ STEP الأصلي بتاعهم، على نفس اللينكات. خلي الصفحة دي مفتوحة لحد ما يخلص (حوالي دقيقة للموديل الكبير).', 'ابدأ')) return;
   const b = dialog(`<h3>بيحدّث الموديلات</h3><div class="prog"><i id="rcBar"></i></div><div id="rcTxt" style="font-size:14px"></div><div class="err" id="rcErr"></div><div class="btns" id="rcBtns" style="display:none"><button class="btn" id="rcOk">تمام</button></div>`);
-  const errs = [];
+  const errs = [], P = progBar(b.querySelector('#rcBar'));
   for (let k = 0; k < list.length; k++) {
-    const m = list[k], say = t => { b.querySelector('#rcTxt').innerHTML = (k + 1) + ' من ' + list.length + ': <bdi>' + esc(m.name) + '</bdi><br>' + t; };
-    b.querySelector('#rcBar').style.width = (100 * k / list.length) + '%';
+    // كل موديل ليه حتة من الشريط [a, b]: تنزيل الـ STEP 0-12%، فك الضغط، التحويل 15-85%، الرفع 85-98%، التسجيل
+    const m = list[k], a = 100 * k / list.length, w = 100 / list.length, at = f => a + w * f;
+    const say = t => { b.querySelector('#rcTxt').innerHTML = (k + 1) + ' من ' + list.length + ': <bdi>' + esc(m.name) + '</bdi><br>' + t; };
+    P.set(at(0));
     try {
-      const parts = [];
-      for (let i = 0; i < m.stepParts; i++) { say('بينزّل الـ STEP (' + (i + 1) + '/' + m.stepParts + ')'); const r = await engCall({ fn: 'step', id: m.id, i }, 120000); parts.push(await b64ToBytes(r.b64)); }
-      const step = await gz(joinParts(parts), 'd');
-      say('بيحوّل...');
-      const conv = await convertInWorker(step, m.name, m.stepName || '', null);
-      say('بيرفع...');
-      const glbParts = await uploadBytes(conv.glb, 'glb');
+      const parts = [], sp = m.stepParts;
+      for (let i = 0; i < sp; i++) {
+        say('بينزّل الـ STEP الأصلي (' + (i + 1) + ' من ' + sp + ')'); P.creep(at(0.12 * (i + 1) / sp), PART_SEC);
+        const r = await engCall({ fn: 'step', id: m.id, i }, 120000); parts.push(await b64ToBytes(r.b64)); P.set(at(0.12 * (i + 1) / sp));
+      }
+      say('بيفك ضغط الـ STEP'); P.creep(at(0.15), 2);
+      const step = await gz(joinParts(parts), 'd'); P.set(at(0.15));
+      const conv = await convertInWorker(step, m.name, m.stepName || '', convProg(P, at(0.15), at(0.85), m.stepSize || step.length, t => say('بيحوّل: ' + t)));
+      const n = Math.max(1, Math.ceil(conv.glb.length / CHUNK)), up = j => at(0.85 + 0.13 * j / n);
+      say('بيرفع الموديل الجديد (0 من ' + n + ')'); P.set(up(0)); P.creep(up(1), PART_SEC);
+      const glbParts = await uploadBytes(conv.glb, 'glb', (j, nn) => { P.set(up(j)); if (j < nn) P.creep(up(j + 1), PART_SEC); say('بيرفع الموديل الجديد (' + j + ' من ' + nn + ')'); });
+      say('بيسجّل'); P.creep(at(0.995), 4);
       await engCall({ fn: 'publish', id: m.id, glbParts, glbSize: conv.glb.length, fmt: conv.fmt, stats: conv.stats });
+      P.set(at(1));
     } catch (e) { errs.push(m.name + ': ' + e.message); }
   }
-  b.querySelector('#rcBar').style.width = '100%';
+  P.set(100); P.stop();
   b.querySelector('#rcTxt').textContent = errs.length ? 'خلص، بس فيه موديلات ما اتحدثتش:' : 'كل الموديلات اتحدّثت ✓';
   b.querySelector('#rcErr').innerHTML = errs.map(esc).join('<br>');
   b.querySelector('#rcBtns').style.display = 'flex'; b.querySelector('#rcOk').onclick = () => { closeDialog(); loadEngList(); };
