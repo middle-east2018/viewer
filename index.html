@@ -334,7 +334,7 @@ const dotGeo = new THREE.SphereGeometry(1, 14, 10);
 // API: على الجهاز (localhost / شبكة المكتب) بيكلّم السيرفر التجريبي /api، وعلى النت بيكلّم سيرفر جوجل بتاع الشركة.
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwz4cUlWcIq3hip0Xhz26-aSf2l46LYcV20-hOJ74VWGTzPpCYSxxx27XyRZybQ6Jc77Q/exec';
 const params = new URLSearchParams(location.search);
-const API = window.ME_API || (/^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname) ? '/api' : GAS_URL);
+const API = window.ME_API || (location.hostname === 'localhost' && localStorage.getItem('me_api_test')) || (/^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname) ? '/api' : GAS_URL);
 const APP_FMT = 2;               // لازم يساوي FMT في tools/convert-core.mjs
 const OFFLINE_DAYS = 7;          // الموديل بيفتح من غير نت لحد المدة دي من آخر مرة اتأكدنا من السيرفر
 const CHUNK = 4 * 1024 * 1024;   // حجم الجزء في الرفع والتنزيل (حدود جوجل)
