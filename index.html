@@ -356,7 +356,7 @@ const dotGeo = new THREE.SphereGeometry(1, 14, 10);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwz4cUlWcIq3hip0Xhz26-aSf2l46LYcV20-hOJ74VWGTzPpCYSxxx27XyRZybQ6Jc77Q/exec';
 const params = new URLSearchParams(location.search);
 const API = window.ME_API || (location.hostname === 'localhost' && localStorage.getItem('me_api_test')) || (/^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname) ? '/api' : GAS_URL);
-const APP_FMT = 2;               // لازم يساوي FMT في tools/convert-core.mjs
+const APP_FMT = 3;              // لازم يساوي FMT في tools/convert-core.mjs
 const OFFLINE_DAYS = 7;          // الموديل بيفتح من غير نت لحد المدة دي من آخر مرة اتأكدنا من السيرفر
 const CHUNK = 4 * 1024 * 1024;   // حجم الجزء في الرفع والتنزيل (حدود جوجل)
 const BASE = new URL('./', location.href).href;
@@ -456,7 +456,8 @@ async function loadBytes(bytes, entry) {
   setupModel(gltf);
   $('loading').remove();
   const fmt = +(gltf.parser.json.scenes?.[0]?.extras?.meta || 0);
-  if (fmt < APP_FMT) toast('الموديل ده معمول بنسخة قديمة. العرض شغال، بس القياس المضبوط محتاج المهندس يحدّثه.', 6000);
+  if (fmt === 2) toast('الموديل ده معمول قبل قياس الشفة والكون وخطوط التماس. باقي القياس شغال، والمهندس يقدر يحدّثه من صفحته.', 6000);
+  else if (fmt < APP_FMT) toast('الموديل ده معمول بنسخة قديمة. العرض شغال، بس القياس المضبوط محتاج المهندس يحدّثه.', 6000);
   else { hint('دوس على أي قطعة علشان تعرف اسمها'); setTimeout(() => { if (mode === 'view' && !$('draw').classList.contains('on')) hint(''); }, 5000); }
   window.__viewer = { THREE, scene, camera, controls, parts, groups, bodyMeshes, probe, pair, single, req, renderer, cur, placeCursor, getSel: () => sel, getHover: () => hoverEnt, contours: () => contours, getCut: () => cut, setCut: (c, a) => { cut = c; cutActive = a; applyCut(); }, computeContours, openSheet };
 }
@@ -827,6 +828,7 @@ function setupModel(gltf) {
     const p = { name: nm || 'قطعة', node, meshes: [], lines: [], visible: true, water: /water/i.test(nm) };
     node.traverse(o => {
       if (o.isMesh) { o.userData.part = p; p.meshes.push(o); bodyMeshes.push(o); }
+      else if (o.material && o.material.name === 'tedge') { o.visible = false; }   // خطوط التماس: بتتمسك في القياس بس، مش بتترسم
       else if (o.isLineSegments || o.isLine) { o.userData.part = p; p.lines.push(o); }
     });
     if (!p.meshes.length) continue;
@@ -1002,13 +1004,14 @@ function cacheOf(mesh) {
   for (let i = 0; i < n; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(mw); W[3 * i] = v.x; W[3 * i + 1] = v.y; W[3 * i + 2] = v.z; }
   const holder = mesh.parent && mesh.parent.userData.f ? mesh.parent : mesh;
   const meta = holder.userData;
-  const lines = holder === mesh.parent ? mesh.parent.children.find(o => o.isLineSegments) : null;
-  let S = new Float32Array(0), SE = new Int32Array(0);
-  if (lines) {
-    const lg = lines.geometry, lp = lg.attributes.position, le = lg.attributes._edgeid, lw = lines.matrixWorld;
+  // الحروف المرسومة + خطوط التماس (المخفية) مع بعض، علشان الاتنين يتمسكوا
+  const lines = holder === mesh.parent ? mesh.parent.children.filter(o => o.isLineSegments) : [];
+  let tot = 0; lines.forEach(l => { const lg = l.geometry; tot += lg.index ? lg.index.count : lg.attributes.position.count; });
+  const S = new Float32Array(tot * 3), SE = new Int32Array(tot / 2); let o = 0;
+  for (const l of lines) {
+    const lg = l.geometry, lp = lg.attributes.position, le = lg.attributes._edgeid, lw = l.matrixWorld;
     const ix = lg.index ? lg.index.array : null, cnt = ix ? ix.length : lp.count;
-    S = new Float32Array(cnt * 3); SE = new Int32Array(cnt / 2);
-    for (let k = 0; k < cnt; k++) { const i = ix ? ix[k] : k; v.fromBufferAttribute(lp, i).applyMatrix4(lw); S[3 * k] = v.x; S[3 * k + 1] = v.y; S[3 * k + 2] = v.z; if (k % 2 === 0) SE[k / 2] = le ? Math.round(le.getX(i)) : -1; }
+    for (let k = 0; k < cnt; k++, o++) { const i = ix ? ix[k] : k; v.fromBufferAttribute(lp, i).applyMatrix4(lw); S[3 * o] = v.x; S[3 * o + 1] = v.y; S[3 * o + 2] = v.z; if (o % 2 === 0) SE[o / 2] = le ? Math.round(le.getX(i)) : -1; }
   }
   if (!g.boundingSphere) g.computeBoundingSphere();
   const sphere = g.boundingSphere.clone().applyMatrix4(mw);
@@ -1042,7 +1045,14 @@ function computeContours() {
         const f = mc.fid.getX(a); let arr = byFace.get(f); if (!arr) byFace.set(f, arr = []);
         if (sa !== sb) cutPt(a, b, arr); if (sb !== sc) cutPt(b, c, arr); if (sc !== sa) cutPt(c, a, arr);
       }
-      for (const [f, arr] of byFace) { const segs = new Float32Array(arr); all.push(segs); contours.push({ mc, face: f, segs, ent: null }); }
+      for (const [f, arr] of byFace) {
+        const segs = new Float32Array(arr); all.push(segs);
+        // أطراف خط القطع بتاع الوش ده (اللي بتتكرر مرة واحدة) = مكان ما بيقابل الوش اللي جنبه، زي نقطة التماس بين القوس والخط المستقيم
+        const cnt = new Map(), key = i => Math.round(segs[i] * 50) + ',' + Math.round(segs[i + 1] * 50) + ',' + Math.round(segs[i + 2] * 50);
+        for (let i = 0; i < segs.length; i += 3) { const k = key(i), c = cnt.get(k); cnt.set(k, c ? [c[0] + 1, c[1]] : [1, i]); }
+        const ends = []; for (const [, [c, i]] of cnt) if (c === 1) ends.push(segs[i], segs[i + 1], segs[i + 2]);
+        contours.push({ mc, face: f, segs, ends: new Float32Array(ends), ent: null });
+      }
     }
   }
   let n = 0; all.forEach(a => n += a.length);
@@ -1079,9 +1089,49 @@ function contourEnt(C, pick) {
       e = { kind: 'line', a: c0.clone().add(off).addScaledVector(ax, lo), b: c0.clone().add(off).addScaledVector(ax, hi), dir: ax.clone(), len: hi - lo, exact: false };
     }
   }
+  else if (f[0] >= 3 && f[0] <= 5) e = revContour(f, d, s, pts);
   if (!e) { let L = 0; for (let i = 0; i + 1 < pts.length; i += 2) L += pts[i].distanceTo(pts[i + 1]); e = { kind: 'curve', len: L, exact: false }; }
   e.cut = true; e.hl = { segs: C.segs }; C.ent = e;
   return Object.assign({}, e, { pick });
+}
+
+// قطع الأسطح الملفوفة (كون / torus / كورة):
+//  - القطع عمودي على المحور → دايرة مضبوطة
+//  - القطع بيعدّي على المحور → الكون خط مستقيم، والـ torus قوس نص قطره = R الشفة، والكورة قوس
+function arcDeg(pts, c, n) {   // الزاوية اللي النقط مغطياها حوالين المركز
+  const u = radial(c, n, pts[0]), w = new THREE.Vector3().crossVectors(n, u), a = pts.map(p => { const v = p.clone().sub(c); return Math.atan2(v.dot(w), v.dot(u)); });
+  a.sort((x, y) => x - y); let gap = a[0] + 2 * Math.PI - a[a.length - 1]; for (let i = 1; i < a.length; i++) gap = Math.max(gap, a[i] - a[i - 1]);
+  return THREE.MathUtils.radToDeg(2 * Math.PI - gap);
+}
+function revContour(f, d, s, pts) {
+  if (pts.length < 2) return null;
+  const mean = pts.reduce((m, p) => m.add(p), new THREE.Vector3()).multiplyScalar(1 / pts.length);
+  if (f[0] === 5) {
+    const c0 = V3(f, 1), dist = d.dot(c0) - s, rr = f[4] * f[4] - dist * dist; if (rr <= 0) return null;
+    const c = c0.clone().addScaledVector(d, -dist), deg = arcDeg(pts, c, d), cl = deg > 355;
+    return { kind: 'circle', c, n: d.clone(), r: Math.sqrt(rr), closed: cl, deg, exact: true };
+  }
+  const ax = V3(f, 1).normalize(), c0 = V3(f, 4), k = ax.dot(d), dist = d.dot(c0) - s;
+  if (Math.abs(k) > 0.99999) {
+    const c = c0.clone().addScaledVector(ax, -dist / k), h = c.clone().sub(c0).dot(ax);
+    let r;
+    if (f[0] === 3) r = h * Math.tan(THREE.MathUtils.degToRad(f[7]));
+    else { const q = f[8] * f[8] - h * h; if (q < 0) return null; const m = pts.reduce((t, p) => t + p.distanceTo(c), 0) / pts.length, r1 = f[7] + Math.sqrt(q), r2 = f[7] - Math.sqrt(q); r = Math.abs(m - r1) < Math.abs(m - r2) ? r1 : r2; }
+    if (!(r > 0)) return null;
+    const deg = arcDeg(pts, c, ax);
+    return { kind: 'circle', c, n: ax.clone(), r, closed: deg > 355, deg, exact: true };
+  }
+  if (Math.abs(k) < 1e-4 && Math.abs(dist) < 0.05) {
+    const u = radial(c0, ax, mean);
+    if (f[0] === 3) {
+      const al = THREE.MathUtils.degToRad(f[7]), g = ax.clone().multiplyScalar(Math.cos(al)).addScaledVector(u, Math.sin(al));
+      let lo = Infinity, hi = -Infinity; pts.forEach(p => { const t = p.clone().sub(c0).dot(g); lo = Math.min(lo, t); hi = Math.max(hi, t); });
+      return { kind: 'line', a: c0.clone().addScaledVector(g, lo), b: c0.clone().addScaledVector(g, hi), dir: g, len: hi - lo, exact: true };
+    }
+    const c = c0.clone().addScaledVector(u, f[7]), n = d.clone();
+    return { kind: 'circle', c, n, r: f[8], closed: false, deg: f[10] || arcDeg(pts, c, n), exact: true };
+  }
+  return null;
 }
 
 // ================================================================ تحويل بيانات الحرف والوش لـ "كيان" نقيسه
@@ -1090,24 +1140,31 @@ function edgeEnt(mc, id, pick) {
   if (e[0] === 1) { const a = V3(e, 1), b = V3(e, 4); o = { kind: 'line', a, b, dir: b.clone().sub(a).normalize(), len: a.distanceTo(b), exact: true }; }
   else if (e[0] === 2 || e[0] === 3) o = { kind: 'circle', c: V3(e, 1), n: V3(e, 4).normalize(), r: e[7], closed: e[0] === 2, deg: e[8], exact: true };
   else o = { kind: 'curve', len: e[1], exact: false };
+  o.tangent = mc.meta.tn !== undefined && id >= mc.meta.tn;   // خط تماس (مش مرسوم)
   o.pick = pick; o.hl = { mc, edge: id }; return o;
 }
 function faceEnt(mc, fid, pick) {
   const f = mc.meta.f?.[fid] || [0]; let o;
   if (f[0] === 1) o = { kind: 'plane', n: V3(f, 1).normalize(), p: V3(f, 4), exact: true };
-  else if (f[0] === 2) o = { kind: 'cyl', a: V3(f, 1).normalize(), c: V3(f, 4), r: f[7], len: f[9] - f[8], outer: f[10] > 0, exact: true };
+  else if (f[0] === 2) o = { kind: 'cyl', a: V3(f, 1).normalize(), c: V3(f, 4), r: f[7], h0: f[8], h1: f[9], len: f[9] - f[8], outer: f[10] > 0, exact: true };
+  else if (f[0] === 3) o = { kind: 'cone', a: V3(f, 1).normalize(), apex: V3(f, 4), alpha: f[7], t0: f[8], t1: f[9], outer: f[10] > 0, exact: true };
+  else if (f[0] === 4) o = { kind: 'torus', a: V3(f, 1).normalize(), c: V3(f, 4), R: f[7], r: f[8], thS: f[10], phS: f[11], outer: f[12] > 0, exact: true };
+  else if (f[0] === 5) o = { kind: 'sphere', c: V3(f, 1), r: f[4], outer: f[5] > 0, exact: true };
   else o = { kind: 'surface', exact: false };
   o.pick = pick; o.hl = { mc, face: fid }; return o;
 }
 function entLabel(e) {
-  const pre = e.cut ? 'على خط القطع: ' : '';
+  const pre = e.cut ? 'على خط القطع: ' : e.tangent ? 'خط تماس: ' : '';
   switch (e.kind) {
-    case 'point': return 'نقطة ' + ({ vertex: '(ركن)', edge: 'على حرف', surface: 'على سطح', cut: 'على خط القطع' }[e.sub] || '');
+    case 'point': return 'نقطة ' + ({ vertex: '(ركن)', edge: 'على حرف', surface: 'على سطح', cut: 'على خط القطع', cutend: '(طرف خط القطع)' }[e.sub] || '');
     case 'line': return pre + 'خط مستقيم · L ' + fmtL(e.len);
-    case 'circle': return pre + (e.closed ? 'دايرة · Ø ' + fmtL(2 * e.r) : 'قوس · Ø ' + fmtL(2 * e.r));
+    case 'circle': return pre + (e.closed ? 'دايرة · Ø ' + fmtL(2 * e.r) : (e.deg || 0) >= 170 ? 'قوس · Ø ' + fmtL(2 * e.r) : 'قوس · R ' + fmtL(e.r));
     case 'curve': return pre + 'حرف منحني';
     case 'plane': return 'سطح مستوي';
     case 'cyl': return 'سطح اسطواني ' + (e.outer ? 'من بره' : 'من جوه') + ' · Ø ' + fmtL(2 * e.r);
+    case 'cone': return 'سطح مخروطي (كون) · ميل ' + fmt(90 - e.alpha) + '°';
+    case 'torus': return 'شفة / كوع (torus) · R ' + fmtL(e.r);
+    case 'sphere': return 'سطح كروي · R ' + fmtL(e.r);
     default: return 'سطح منحني';
   }
 }
@@ -1164,6 +1221,13 @@ function probe(x, y) {
     }
   }
   for (let ci = 0; ci < contours.length; ci++) {
+    const Ev = contours[ci].ends;
+    for (let i = 0; i < Ev.length; i += 3) {
+      if (!proj(Ev[i], Ev[i + 1], Ev[i + 2], A)) continue;
+      const dd = Math.hypot(A[0] - x, A[1] - y); if (dd > tolV || (bestV && dd >= bestV.dd)) continue;
+      const p = new THREE.Vector3(Ev[i], Ev[i + 1], Ev[i + 2]); if (hit && p.clone().sub(o).dot(dir) > hitT + occTol) continue;
+      bestV = { dd, p, sub: 'cutend' };
+    }
     const S = contours[ci].segs;
     for (let k = 0; k < S.length; k += 6) {
       if (!proj(S[k], S[k + 1], S[k + 2], A) || !proj(S[k + 3], S[k + 4], S[k + 5], B)) continue;
@@ -1177,11 +1241,11 @@ function probe(x, y) {
   const pt = (p, sub) => ({ kind: 'point', p, pick: p, sub, exact: sub === 'vertex' });
   if (snapMode === 'auto') {
     // الركن بيكسب بس لو المؤشر أقرب له من أي حرف (أو قريب منهم بنفس القدر)
-    if (bestV && (!bestE || bestV.dd <= bestE.dd + 3)) return pt(bestV.p, 'vertex');
+    if (bestV && (!bestE || bestV.dd <= bestE.dd + 3)) return pt(bestV.p, bestV.sub || 'vertex');
     if (bestE) return asEdge();
     if (hit) return asFace();
   } else if (snapMode === 'point') {
-    if (bestV) return pt(bestV.p, 'vertex');
+    if (bestV) return pt(bestV.p, bestV.sub || 'vertex');
     if (bestE) return pt(bestE.p, bestE.contour ? 'cut' : 'edge');
     if (hit) return pt(hit.point.clone(), 'surface');
   } else if (snapMode === 'edge') { if (bestE) return asEdge(); }
@@ -1311,19 +1375,73 @@ function single(e) {
   const T = entLabel(e);
   if (e.kind === 'point') return { title: T, rows: [['الارتفاع من تحت', mm(e.p.y - modelBox.min.y)]] };
   if (e.kind === 'line') return { title: 'خط مستقيم' + (e.cut ? ' على القطع' : ''), big: 'L ' + mm(e.len), seg: [e.a, e.b], tag: fmtL(e.len), approx: !e.exact };
-  if (e.kind === 'circle') return { title: e.closed ? 'دايرة' : 'قوس (' + fmt(e.deg || 0) + '°)', big: 'Ø ' + mm(2 * e.r), rows: [['نص القطر', 'R ' + mm(e.r)]], seg: null };
+  if (e.kind === 'circle') {
+    const rows = [['نص القطر', 'R ' + mm(e.r)], ['Ø', mm(2 * e.r)]];
+    if (Math.abs(e.n.y) > 0.9999) rows.push(['الارتفاع من تحت', mm(e.c.y - modelBox.min.y)]);
+    const what = e.closed ? 'دايرة' : 'قوس (' + fmt(e.deg || 0) + '°)';
+    return { title: (e.tangent ? 'خط تماس بين سطحين · ' : e.cut ? 'على خط القطع · ' : '') + what, big: e.closed || (e.deg || 0) >= 170 ? 'Ø ' + mm(2 * e.r) : 'R ' + mm(e.r), rows, seg: null };
+  }
+  if (e.kind === 'cone') {
+    const tn = Math.tan(THREE.MathUtils.degToRad(e.alpha));
+    return { title: 'سطح مخروطي (كون) ' + (e.outer ? 'من بره' : 'من جوه'), big: fmt(90 - e.alpha) + '°', rows: [
+      ['الميل (عن المستوى العمودي على المحور)', fmt(90 - e.alpha) + '°'], ['الزاوية مع المحور', fmt(e.alpha) + '°'], ['زاوية الرأس', fmt(2 * e.alpha) + '°'],
+      ['Ø عند الطرف الكبير', mm(2 * e.t1 * tn)], ['Ø عند الطرف الصغير', mm(2 * e.t0 * tn)], ['الطول في اتجاه المحور', mm(e.t1 - e.t0)]] };
+  }
+  if (e.kind === 'torus') return { title: 'سطح torus (شفة أو كوع) ' + (e.outer ? 'من بره' : 'من جوه'), big: 'R ' + mm(e.r), rows: [
+    ['R نص قطر القوس (الشفة، أو نص قطر ماسورة الكوع)', mm(e.r)], ['من المحور لمركز القوس (بنطة الكوع)', mm(e.R)],
+    ['زاوية القوس', fmt(e.thS) + '°'], ['اللفة حوالين المحور', fmt(e.phS) + '°']] };
+  if (e.kind === 'sphere') return { title: 'سطح كروي ' + (e.outer ? 'من بره' : 'من جوه'), big: 'R ' + mm(e.r), rows: [['Ø', mm(2 * e.r)]] };
   if (e.kind === 'cyl') return { title: 'سطح اسطواني ' + (e.outer ? 'من بره' : 'من جوه (فتحة)'), big: 'Ø ' + mm(2 * e.r), rows: [['نص القطر', 'R ' + mm(e.r)], ['طول السطح ده', mm(e.len)]] };
   if (e.kind === 'plane') { const ny = Math.abs(e.n.y); return { title: 'سطح مستوي ' + (ny > 0.9999 ? '(أفقي)' : ny < 1e-4 ? '(رأسي)' : '(مايل ' + fmt(90 - angDeg(e.n, AX.y)) + '°)'), rows: [['الارتفاع من تحت', ny > 0.9999 ? mm(e.p.y - modelBox.min.y) : '—']] }; }
   if (e.kind === 'curve') return { title: 'حرف منحني', rows: [['الطول', mm(e.len)]] };
   return { title: 'سطح منحني', rows: [['', 'اختار حرف أو نقطة عليه علشان تقيس']] };
 }
-const RANK = { point: 0, line: 1, circle: 2, plane: 3, cyl: 4, curve: 5, surface: 5 };
+const RANK = { point: 0, line: 1, circle: 2, plane: 3, cyl: 4, cone: 5, torus: 6, sphere: 7, curve: 8, surface: 8 };
+// فرق نصين القطر بيتسمى «تخانة» بس لو صغير (حيطة ماسورة أو لوح)، غير كده «فرق نص القطر»
+const thick = (t, rMax) => t <= Math.min(60, 0.15 * rMax);
+const coax = (c1, a1, c2, a2) => Math.abs(a1.dot(a2)) > PAR && onLine(c2, c1, a1).distanceTo(c2) < 0.1;
 function pair(A, B) {
   if (RANK[A.kind] > RANK[B.kind]) [A, B] = [B, A];
   const k = A.kind + '-' + B.kind, ex = A.exact && B.exact;
   const R = (title, big, rows, seg, tag, approx) => ({ title, big, rows, seg, tag: tag || big, approx: approx ?? !ex });
   const P = e => e.kind === 'point' ? e.p : e.pick;
   switch (k) {
+    case 'cyl-cone': {   // التقاطع النظري: امتداد الاسطوانة مع امتداد الكون (الـ virtual sharp)
+      if (!coax(A.c, A.a, B.apex, B.a)) break;
+      const tn = Math.tan(THREE.MathUtils.degToRad(B.alpha)); if (tn < 1e-6) break;
+      const I = B.apex.clone().addScaledVector(B.a, A.r / tn), hI = I.clone().sub(A.c).dot(A.a);
+      const near = Math.abs(A.h0 - hI) < Math.abs(A.h1 - hI) ? A.h0 : A.h1, far = near === A.h0 ? A.h1 : A.h0;
+      const u = radial(A.c, A.a, A.pick), pF = A.c.clone().addScaledVector(A.a, far).addScaledVector(u, A.r), pI = A.c.clone().addScaledVector(A.a, hI).addScaledVector(u, A.r);
+      const Lf = Math.abs(hI - far);
+      return R('طول الاسطوانة لحد التقاطع النظري مع الكون', mm(Lf), [['من التقاطع النظري لآخر الاسطوانة (خط التماس)', mm(Math.abs(hI - near))],
+        ['Ø التقاطع', mm(2 * A.r)], ['ميل الكون', fmt(90 - B.alpha) + '°']], [pF, pI], fmtL(Lf));
+    }
+    case 'plane-cone': {
+      if (Math.abs(A.n.dot(B.a)) < PAR) break;
+      const t = A.p.clone().sub(B.apex).dot(B.a), q = B.apex.clone().addScaledVector(B.a, t), tn = Math.tan(THREE.MathUtils.degToRad(B.alpha));
+      return R('المسافة من السطح لرأس الكون', mm(Math.abs(t)), [['Ø الكون عند السطح (تقاطع نظري)', mm(2 * Math.abs(t) * tn)], ['ميل الكون', fmt(90 - B.alpha) + '°']], [B.apex, q]);
+    }
+    case 'cone-cone': {
+      if (!coax(A.apex, A.a, B.apex, B.a) || Math.abs(A.alpha - B.alpha) > 0.05) break;
+      const al = THREE.MathUtils.degToRad(A.alpha), sd = p => { const d = p.clone().sub(B.apex), h = d.dot(B.a), rho = d.addScaledVector(B.a, -h).length(); return rho * Math.cos(al) - h * Math.sin(al); };
+      // التخانة من الأرقام المضبوطة (فرق الرأسين × sin الزاوية)، والخط المرسوم من النقطة اللي اتحددت
+      const u = radial(A.apex, A.a, A.pick), n = u.clone().multiplyScalar(Math.cos(al)).addScaledVector(A.a, -Math.sin(al)), s = sd(A.pick), p2 = A.pick.clone().addScaledVector(n, -s);
+      const t = Math.abs(B.apex.clone().sub(A.apex).dot(A.a)) * Math.sin(al);
+      return R(thick(t, 1e9) ? 'التخانة (كونين على نفس المحور)' : 'المسافة بين الكونين', mm(t), [['ميل الكون', fmt(90 - A.alpha) + '°']], [A.pick, p2], fmtL(t));
+    }
+    case 'torus-torus': {
+      if (A.c.distanceTo(B.c) > 0.1 || Math.abs(A.a.dot(B.a)) < PAR || Math.abs(A.R - B.R) > 0.05) break;
+      const tc = A.c.clone().addScaledVector(radial(A.c, A.a, A.pick), A.R), dir = A.pick.clone().sub(tc).normalize();
+      const t = Math.abs(A.r - B.r);
+      return R(t <= Math.min(60, 0.5 * Math.max(A.r, B.r)) ? 'التخانة (الشفة من بره ومن جوه)' : 'فرق نص القطر', mm(t), [['R من بره', mm(Math.max(A.r, B.r))], ['R من جوه', mm(Math.min(A.r, B.r))]],
+        [tc.clone().addScaledVector(dir, A.r), tc.clone().addScaledVector(dir, B.r)], fmtL(t));
+    }
+    case 'sphere-sphere': {
+      if (A.c.distanceTo(B.c) > 0.1) break;
+      const u = A.pick.clone().sub(A.c).normalize(), t = Math.abs(A.r - B.r);
+      return R(thick(t, Math.max(A.r, B.r)) ? 'التخانة (كورتين على نفس المركز)' : 'فرق نص القطر', mm(t), [['R من بره', mm(Math.max(A.r, B.r))], ['R من جوه', mm(Math.min(A.r, B.r))]],
+        [A.c.clone().addScaledVector(u, A.r), A.c.clone().addScaledVector(u, B.r)], fmtL(t));
+    }
     case 'point-point': { const a = A.p, b = B.p, d = a.distanceTo(b); return R('المسافة بين النقطتين', mm(d), [['فرق رأسي', mm(Math.abs(b.y - a.y))], ['فرق أفقي', mm(Math.hypot(b.x - a.x, b.z - a.z))]], [a, b], fmtL(d)); }
     case 'point-line': { const q = onLine(A.p, B.a, B.dir); return R('المسافة العمودية من النقطة للخط', mm(A.p.distanceTo(q)), [], [A.p, q]); }
     case 'point-circle': { const d = A.p.distanceTo(B.c); return R('المسافة من النقطة لمركز ' + (B.closed ? 'الدايرة' : 'القوس'), mm(d), [['Ø', mm(2 * B.r)]], [A.p, B.c]); }
@@ -1345,7 +1463,7 @@ function pair(A, B) {
     case 'circle-circle': {
       const dc = A.c.distanceTo(B.c), par = Math.abs(A.n.dot(B.n)) > PAR;
       if (par && dc < 0.05) { const u = radial(A.c, A.n, A.pick), p1 = A.c.clone().addScaledVector(u, A.r), p2 = A.c.clone().addScaledVector(u, B.r), t = Math.abs(A.r - B.r);
-        return R('التخانة (دايرتين على نفس المركز)', mm(t), [['Ø الكبيرة', mm(2 * Math.max(A.r, B.r))], ['Ø الصغيرة', mm(2 * Math.min(A.r, B.r))]], [p1, p2], fmtL(t)); }
+        return R(thick(t, Math.max(A.r, B.r)) ? 'التخانة (دايرتين على نفس المركز)' : 'فرق نص القطر (دايرتين على نفس المركز)', mm(t), [['Ø الكبيرة', mm(2 * Math.max(A.r, B.r))], ['Ø الصغيرة', mm(2 * Math.min(A.r, B.r))]], [p1, p2], fmtL(t)); }
       const rows = [['Ø الأولى', mm(2 * A.r)], ['Ø التانية', mm(2 * B.r)]];
       if (par) { const ax = Math.abs(B.c.clone().sub(A.c).dot(A.n)); rows.unshift(['في اتجاه المحور', mm(ax)], ['في المستوى', mm(Math.sqrt(Math.max(0, dc * dc - ax * ax)))]); }
       return R('المسافة بين المركزين', mm(dc), rows, [A.c, B.c]);
@@ -1353,8 +1471,14 @@ function pair(A, B) {
     case 'circle-plane': { const q = onPlane(A.c, B.n, B.p); return R('المسافة من مركز الدايرة للسطح', mm(A.c.distanceTo(q)), [['Ø', mm(2 * A.r)]], [A.c, q]); }
     case 'circle-cyl': {
       const q = onLine(A.c, B.c, B.a), d = A.c.distanceTo(q);
+      if (d < 0.05 && Math.abs(A.n.dot(B.a)) > PAR && Math.abs(A.r - B.r) < 0.05) {
+        // الدايرة على سطح الاسطوانة نفسها (زي خط التماس فوق الشيل): المسافة منها لطرفين الاسطوانة
+        const h = A.c.clone().sub(B.c).dot(B.a), far = Math.abs(B.h0 - h) > Math.abs(B.h1 - h) ? B.h0 : B.h1, near = far === B.h0 ? B.h1 : B.h0;
+        const u = radial(B.c, B.a, A.pick || B.pick), pF = B.c.clone().addScaledVector(B.a, far).addScaledVector(u, B.r), pC = B.c.clone().addScaledVector(B.a, h).addScaledVector(u, B.r), L = Math.abs(far - h);
+        return R('طول الاسطوانة من الدايرة لآخرها', mm(L), [['من الدايرة للطرف القريب', mm(Math.abs(near - h))], ['Ø', mm(2 * B.r)]], [pC, pF], fmtL(L));
+      }
       if (d < 0.05 && Math.abs(A.n.dot(B.a)) > PAR) { const u = radial(A.c, A.n, A.pick), p1 = A.c.clone().addScaledVector(u, A.r), p2 = A.c.clone().addScaledVector(u, B.r), t = Math.abs(A.r - B.r);
-        return R('التخانة (على نفس المحور)', mm(t), [['Ø الدايرة', mm(2 * A.r)], ['Ø الاسطوانة', mm(2 * B.r)]], [p1, p2], fmtL(t)); }
+        return R(thick(t, Math.max(A.r, B.r)) ? 'التخانة (على نفس المحور)' : 'فرق نص القطر (على نفس المحور)', mm(t), [['Ø الدايرة', mm(2 * A.r)], ['Ø الاسطوانة', mm(2 * B.r)]], [p1, p2], fmtL(t)); }
       return R('المسافة من مركز الدايرة لمحور الاسطوانة', mm(d), [['Ø الدايرة', mm(2 * A.r)], ['Ø الاسطوانة', mm(2 * B.r)]], [A.c, q]);
     }
     case 'plane-plane': {
@@ -1369,7 +1493,7 @@ function pair(A, B) {
       if (Math.abs(A.a.dot(B.a)) > PAR) {
         const q = onLine(A.c, B.c, B.a), dAx = A.c.distanceTo(q);
         if (dAx < 0.05) { const u = radial(A.c, A.a, A.pick), p0 = onLine(A.pick, A.c, A.a), p1 = p0.clone().addScaledVector(u, A.r), p2 = p0.clone().addScaledVector(u, B.r), t = Math.abs(A.r - B.r);
-          return R('التخانة (اسطوانتين على نفس المحور)', mm(t), [['Ø من بره', mm(2 * Math.max(A.r, B.r))], ['Ø من جوه', mm(2 * Math.min(A.r, B.r))]], [p1, p2], fmtL(t)); }
+          return R(thick(t, Math.max(A.r, B.r)) ? 'التخانة (اسطوانتين على نفس المحور)' : 'فرق نص القطر (اسطوانتين على نفس المحور)', mm(t), [['Ø من بره', mm(2 * Math.max(A.r, B.r))], ['Ø من جوه', mm(2 * Math.min(A.r, B.r))]], [p1, p2], fmtL(t)); }
         const a0 = onLine(A.pick, A.c, A.a), b0 = onLine(a0, B.c, B.a);
         const rows = [['Ø الأولى', mm(2 * A.r)], ['Ø التانية', mm(2 * B.r)]]; const gap = dAx - A.r - B.r; if (gap > 0) rows.unshift(['الفاصل بين السطحين', mm(gap)]);
         return R('المسافة بين المحورين', mm(dAx), rows, [a0, b0]);
@@ -1446,6 +1570,9 @@ function loop(now) {
 
 // ================================================================ تشغيل
 $('backBtn').onclick = () => { location.href = BASE; };
+// للتجربة على الجهاز بس: الوصول لدوال القياس من سكريبت الاختبار
+if (location.hostname === 'localhost') window.__dbg = { bodyMeshes, cacheOf, faceEnt, edgeEnt, single, pair, entLabel, contourEnt, computeContours, get contours() { return contours; },
+  cutAt(d, s) { cut = { d: new THREE.Vector3(...d).normalize(), s, kind: 'line', flip: false }; cutActive = true; applyCut(); computeContours(); } };
 (async () => {
   resize(); requestAnimationFrame(loop); instRefresh();
   const p = params.get('p'), m = params.get('m');
