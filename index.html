@@ -141,6 +141,26 @@ ol.steps li.ok{color:#1e7a3e}
 .linkbox{direction:ltr;text-align:left;font-size:13px;background:#f3f6f9;border-radius:8px;padding:8px;word-break:break-all;margin:8px 0}
 #toast{position:absolute;left:50%;bottom:calc(84px + var(--safe-b));transform:translateX(-50%);background:rgba(28,38,51,.92);color:#fff;font-size:13.5px;border-radius:20px;padding:8px 16px;z-index:40;display:none;max-width:90%;text-align:center}
 #toast.show{display:block}
+/* ===== التثبيت كتطبيق ===== */
+#instBtn{border:0;background:#fff;color:var(--blue);border-radius:18px;padding:6px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;flex:none;display:none;align-items:center;gap:5px}
+#instBtn.show{display:flex}
+#instBtn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.inst{background:linear-gradient(160deg,#2D5B8C 0%,#1f456d 100%);color:#fff;position:relative;overflow:hidden}
+.inst h3{color:#fff;font-size:17px}
+.inst p{color:rgba(255,255,255,.85)}
+.inst .x{position:absolute;top:8px;left:8px;border:0;background:rgba(255,255,255,.14);color:#fff;width:30px;height:30px;border-radius:50%;font-size:18px;cursor:pointer}
+.shots{display:flex;gap:10px;justify-content:center;padding:10px 0 6px}
+.shots figure{margin:0;flex:1 1 0;min-width:0;max-width:170px;text-align:center}
+.shots img{width:100%;height:auto;aspect-ratio:390/844;object-fit:cover;border-radius:12px;border:3px solid #0f2238;box-shadow:0 6px 16px rgba(0,0,0,.28);background:#e6eaef;display:block}
+.shots figcaption{font-size:12.5px;margin-top:6px;color:#fff;font-weight:500}
+.feats{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:13px}
+.feats li{display:flex;gap:7px;align-items:flex-start;line-height:1.5}
+.feats li i{flex:none;width:20px;height:20px;border-radius:50%;background:#d9542e;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:12px;margin-top:1px}
+.instGo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:12px;border:0;border-radius:12px;background:#fff;color:var(--blue);font:inherit;font-size:16px;font-weight:600;min-height:48px;cursor:pointer}
+.instGo svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.iosHow{background:rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13.5px;line-height:1.7}
+.dlg .box.instBox{padding:0;overflow:auto}
+.dlg .box.instBox .hcard{margin:0;border-radius:16px}
 </style>
 <script type="importmap">
 {"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}
@@ -151,6 +171,7 @@ ol.steps li.ok{color:#1e7a3e}
   <button id="backBtn" aria-label="رجوع للصفحة الرئيسية">→</button>
   <div class="grow"><div class="t" id="title">عارض الموديلات</div><div class="s" id="sub">Middle East</div></div>
   <span class="badge" id="cached" hidden>متخزن على الموبايل</span>
+  <button id="instBtn" aria-label="ثبّت التطبيق"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>ثبّت</button>
 </header>
 <div id="view"></div>
 <div id="draw"><svg><line id="drawLine" stroke="#d9542e" stroke-width="3" stroke-dasharray="8 6" x1="0" y1="0" x2="0" y2="0"/></svg></div>
@@ -441,8 +462,55 @@ async function loadBytes(bytes, entry) {
 }
 
 // ---------------------------------------------------------------- نوافذ (dialogs)
-function dialog(html) { $('dlgBox').innerHTML = html; $('dlg').classList.add('show'); return $('dlgBox'); }
-function closeDialog() { $('dlg').classList.remove('show'); $('dlgBox').innerHTML = ''; }
+function dialog(html, cls = '') { $('dlgBox').className = 'box ' + cls; $('dlgBox').innerHTML = html; $('dlg').classList.add('show'); return $('dlgBox'); }
+function closeDialog() { $('dlg').classList.remove('show'); $('dlgBox').innerHTML = ''; $('dlgBox').className = 'box'; }
+
+// ---------------------------------------------------------------- التثبيت كتطبيق
+// أندرويد/كمبيوتر: Chrome بيبعت beforeinstallprompt لو التطبيق مش متثبت، فبنظهر الزرار. آيفون: مفيش زرار من النظام، فبنشرح الخطوات.
+let instEvt = null;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const canInstall = () => !isStandalone() && (!!instEvt || isIOS());
+function installHTML(withX) {
+  const go = `<svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>`;
+  return `${withX ? '<button class="x" id="instX" aria-label="مش دلوقتي">×</button>' : ''}
+    <h3>ثبّت عارض الموديلات على موبايلك</h3>
+    <p>أيقونة على الشاشة الرئيسية، والموديل يفتح في ثانية، حتى من غير نت.</p>
+    <div class="shots">
+      <figure><img src="shots/s1.jpg" alt="" loading="lazy"><figcaption>لف وقرّب</figcaption></figure>
+      <figure><img src="shots/s2.jpg" alt="" loading="lazy"><figcaption>سكشن من جوه</figcaption></figure>
+      <figure><img src="shots/s3.jpg" alt="" loading="lazy"><figcaption>قياس بالمللي</figcaption></figure>
+    </div>
+    <ul class="feats">
+      <li><i>✓</i>بيفتح من غير نت بعد أول مرة</li>
+      <li><i>✓</i>صوّر الـ QR اللي على اللوحة</li>
+      <li><i>✓</i>سُمك المواسير والأقطار والمسافات</li>
+      <li><i>✓</i>التحديثات بتوصل لوحدها</li>
+    </ul>
+    ${isIOS() ? `<div class="iosHow">على الآيفون: افتح الصفحة في <bdi>Safari</bdi>، ودوس زرار المشاركة <b>⬆︎</b> تحت، وبعدها «<bdi>Add to Home Screen</bdi>».</div>`
+              : `<button class="instGo">${go}ثبّت التطبيق</button>`}`;
+}
+function installDialog() {
+  const b = dialog(`<div class="hcard inst">${installHTML(true)}</div>`, 'instBox');
+  b.querySelector('#instX').onclick = closeDialog;
+  b.querySelector('.instGo')?.addEventListener('click', doInstall);
+}
+async function doInstall() {
+  if (!instEvt) { if (isIOS()) installDialog(); return; }
+  const e = instEvt; instEvt = null;
+  e.prompt();
+  try { await e.userChoice; } catch (_) {}   // الحدث بيتستخدم مرة واحدة؛ لو رفض، Chrome بيبعت واحد جديد بعدين
+  instRefresh();
+}
+function instRefresh() {
+  $('instBtn').classList.toggle('show', canInstall());
+  if (!canInstall()) { $('instCard')?.remove(); if ($('dlgBox').classList.contains('instBox')) closeDialog(); }
+  else if ($('home').classList.contains('show') && !$('instCard') && !sessionStorage.getItem('me_inst_x'))
+    $('home').insertAdjacentHTML('afterbegin', `<div class="hcard inst" id="instCard">${installHTML(true)}</div>`);
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEvt = e; instRefresh(); });
+window.addEventListener('appinstalled', () => { instEvt = null; instRefresh(); toast('التطبيق اتثبت. هتلاقيه على الشاشة الرئيسية'); });
+$('instBtn').onclick = () => installDialog();
 function confirmBox(title, text, okLabel = 'تمام', danger = false) {
   return new Promise(res => {
     const b = dialog(`<h3>${esc(title)}</h3><p style="font-size:14px;line-height:1.7">${text}</p><div class="btns"><button class="btn ${danger ? '' : ''}" id="cOk" style="${danger ? 'background:#b3261e' : ''}">${esc(okLabel)}</button><button class="btn ghost" id="cNo">لأ</button></div>`);
@@ -483,7 +551,8 @@ let engModels = null;
 async function renderHome() {
   const I = localIdx(), ids = Object.keys(I).sort((a, b) => (I[b].opened || 0) - (I[a].opened || 0));
   const et = engTok();
-  let h = `<div class="hcard"><h3><span class="grow">الموديلات اللي على الموبايل ده</span></h3>`;
+  let h = (canInstall() && !sessionStorage.getItem('me_inst_x')) ? `<div class="hcard inst" id="instCard">${installHTML(true)}</div>` : '';
+  h += `<div class="hcard"><h3><span class="grow">الموديلات اللي على الموبايل ده</span></h3>`;
   if (!ids.length) h += `<p>مفيش موديلات لسه. صوّر الـ QR اللي على اللوحة، أو افتح اللينك اللي اتبعتلك، والموديل هيتفتح ويتخزن هنا.</p>`;
   ids.forEach(id => {
     const e = I[id];
@@ -510,6 +579,8 @@ async function onHomeClick(ev) {
     if (await confirmBox('مسح الموديل من الموبايل', 'هيتمسح <bdi>' + esc(e?.name || '') + '</bdi> من الموبايل ده بس. تقدر تفتحه تاني من نفس اللينك أو الـ QR طول ما المشروع مفتوح.', 'امسح')) { await forget(t.dataset.del); renderHome(); toast('اتمسح من الموبايل'); }
     return;
   }
+  if (t.id === 'instX') { sessionStorage.setItem('me_inst_x', '1'); $('instCard')?.remove(); return; }
+  if (t.classList.contains('instGo')) return doInstall();
   if (t.id === 'engIn') return engLogin();
   if (t.id === 'engOut') { localStorage.removeItem('me_eng'); renderHome(); return; }
   if (t.id === 'upNew') return uploadDialog(null);
@@ -1376,7 +1447,7 @@ function loop(now) {
 // ================================================================ تشغيل
 $('backBtn').onclick = () => { location.href = BASE; };
 (async () => {
-  resize(); requestAnimationFrame(loop);
+  resize(); requestAnimationFrame(loop); instRefresh();
   const p = params.get('p'), m = params.get('m');
   tidyCache();
   try {
