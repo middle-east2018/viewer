@@ -279,6 +279,10 @@ import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import qrcode from './vendor/qrcode.mjs';
+import { computeBoundsTree, acceleratedRaycast } from './vendor/three-mesh-bvh.module.js';
+// BVH: فهرس للمثلثات في الفراغ، فاللمسة والقياس والسكشن مابيلفوش على كل المثلثات (2.6 مليون في الـ heat exchanger → أقل من ملي ثانية)
+THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
 const $ = id => document.getElementById(id);
 const V3 = (a, i = 0) => new THREE.Vector3(a[i], a[i + 1], a[i + 2]);
@@ -335,8 +339,8 @@ function bodyMaterial(opts) {
   return m;
 }
 const M = {
-  body: bodyMaterial(),
-  sel: bodyMaterial({ color: 0x4fb3bd, emissive: 0x0b4a52 }),
+  body: bodyMaterial({ side: THREE.FrontSide }),
+  sel: bodyMaterial({ color: 0x4fb3bd, emissive: 0x0b4a52, side: THREE.FrontSide }),
   fade: bodyMaterial({ transparent: true, opacity: 0.12, depthWrite: false }),
   water: bodyMaterial({ color: 0x4a90d9, transparent: true, opacity: 0.25, depthWrite: false }),
   edge: new THREE.LineBasicMaterial({ color: 0x1d2530, clippingPlanes: clipping }),
@@ -356,7 +360,7 @@ const dotGeo = new THREE.SphereGeometry(1, 14, 10);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwz4cUlWcIq3hip0Xhz26-aSf2l46LYcV20-hOJ74VWGTzPpCYSxxx27XyRZybQ6Jc77Q/exec';
 const params = new URLSearchParams(location.search);
 const API = window.ME_API || (location.hostname === 'localhost' && localStorage.getItem('me_api_test')) || (/^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname) ? '/api' : GAS_URL);
-const APP_FMT = 3;              // لازم يساوي FMT في tools/convert-core.mjs
+const APP_FMT = 4;             // لازم يساوي FMT في tools/convert-core.mjs
 const OFFLINE_DAYS = 7;          // الموديل بيفتح من غير نت لحد المدة دي من آخر مرة اتأكدنا من السيرفر
 const CHUNK = 4 * 1024 * 1024;   // حجم الجزء في الرفع والتنزيل (حدود جوجل)
 const BASE = new URL('./', location.href).href;
@@ -457,9 +461,9 @@ async function loadBytes(bytes, entry) {
   $('loading').remove();
   const fmt = +(gltf.parser.json.scenes?.[0]?.extras?.meta || 0);
   if (fmt === 2) toast('الموديل ده معمول قبل قياس الشفة والكون وخطوط التماس. باقي القياس شغال، والمهندس يقدر يحدّثه من صفحته.', 6000);
-  else if (fmt < APP_FMT) toast('الموديل ده معمول بنسخة قديمة. العرض شغال، بس القياس المضبوط محتاج المهندس يحدّثه.', 6000);
+  else if (fmt < 3) toast('الموديل ده معمول بنسخة قديمة. العرض شغال، بس القياس المضبوط محتاج المهندس يحدّثه.', 6000);
   else { hint('دوس على أي قطعة علشان تعرف اسمها'); setTimeout(() => { if (mode === 'view' && !$('draw').classList.contains('on')) hint(''); }, 5000); }
-  window.__viewer = { THREE, scene, camera, controls, parts, groups, bodyMeshes, probe, pair, single, req, renderer, cur, placeCursor, getSel: () => sel, getHover: () => hoverEnt, contours: () => contours, getCut: () => cut, setCut: (c, a) => { cut = c; cutActive = a; applyCut(); }, computeContours, openSheet };
+  window.__viewer = { THREE, scene, camera, controls, parts, groups, bodyMeshes, probe, pair, single, req, renderer, cur, placeCursor, getSel: () => sel, getHover: () => hoverEnt, contours: () => contours, getCut: () => cut, setCut: (c, a) => { cut = c; cutActive = a; applyCut(); }, computeContours, openSheet, lodBodies, setLOD, cacheOf, faceEnt, isHeavy: () => heavyModel };
 }
 
 // ---------------------------------------------------------------- نوافذ (dialogs)
@@ -853,7 +857,24 @@ async function reconvertAll() {
 }
 
 // ================================================================ القطع
-const parts = [], groups = [], bodyMeshes = [];
+const parts = [], groups = [], bodyMeshes = [], lodBodies = [];
+// القطع المكررة (FMT 4): الـ node بتاعها فيه { inst: iid } بس. بيانات القياس بتتحسب من الأصل بالتحويل اللي بينهم (لف + نقل)
+function expandInstances(root) {
+  const refs = new Map(); root.traverse(o => { if (o.userData && o.userData.f && o.userData.iid !== undefined) refs.set(o.userData.iid, o); });
+  if (!refs.size) return;
+  const T = new THREE.Matrix4(), N3 = new THREE.Matrix3(), v = new THREE.Vector3();
+  root.traverse(o => {
+    const k = o.userData && o.userData.inst, R = k !== undefined && refs.get(k); if (!R) return;
+    T.copy(R.matrixWorld).invert().premultiply(o.matrixWorld); N3.setFromMatrix4(T);
+    const P = (a, i) => { v.set(a[i], a[i + 1], a[i + 2]).applyMatrix4(T); return [v.x, v.y, v.z]; };
+    const D = (a, i) => { v.set(a[i], a[i + 1], a[i + 2]).applyMatrix3(N3).normalize(); return [v.x, v.y, v.z]; };
+    const S = R.userData;
+    o.userData.f = S.f.map(f => f[0] === 5 ? [5, ...P(f, 1), ...f.slice(4)] : f[0] >= 1 && f[0] <= 4 ? [f[0], ...D(f, 1), ...P(f, 4), ...f.slice(7)] : f);
+    o.userData.e = S.e.map(e => e[0] === 1 ? [1, ...P(e, 1), ...P(e, 4)] : e[0] === 2 || e[0] === 3 ? [e[0], ...P(e, 1), ...D(e, 4), ...e.slice(7)] : e);
+    const vv = []; for (let i = 0; i < (S.v || []).length; i += 3) vv.push(...P(S.v, i)); o.userData.v = vv;
+    o.userData.tn = S.tn; o.userData.lod = S.lod;
+  });
+}
 const modelBox = new THREE.Box3(); let modelSize = 1;
 
 function setupModel(gltf) {
@@ -867,11 +888,17 @@ function setupModel(gltf) {
   // three.js بيغيّر الأسامي (بيشيل النقط والمسافات)، فناخد الاسم الأصلي من الملف
   const jsonNodes = gltf.parser.json.nodes || [];
   const realName = o => { const a = gltf.parser.associations.get(o); return (a && a.nodes !== undefined && jsonNodes[a.nodes].name) || o.name; };
+  root.updateMatrixWorld(true);
+  expandInstances(root);
   for (const node of asm.children) {
     const nm = realName(node);
     const p = { name: nm || 'قطعة', node, meshes: [], lines: [], visible: true, water: /water/i.test(nm) };
     node.traverse(o => {
-      if (o.isMesh) { o.userData.part = p; p.meshes.push(o); bodyMeshes.push(o); }
+      if (o.isMesh && o.material && o.material.name === 'lod') {   // النسخة المبسطة: بتترسم بدل الأصلية لما تبقى بعيدة (setLOD)
+        const main = o.parent.children.find(c => c.isMesh && c !== o && c.material.name !== 'lod');
+        o.visible = false; o.userData.part = p; if (main) { main.userData.lod = o; main.userData.lodErr = o.parent.userData.lod || 1; lodBodies.push(main); }
+      }
+      else if (o.isMesh) { o.userData.part = p; p.meshes.push(o); bodyMeshes.push(o); }
       else if (o.material && o.material.name === 'tedge') { o.visible = false; }   // خطوط التماس: بتتمسك في القياس بس، مش بتترسم
       else if (o.isLineSegments || o.isLine) { o.userData.part = p; p.lines.push(o); }
     });
@@ -889,6 +916,8 @@ function setupModel(gltf) {
   $('sub').innerHTML = parts.length + ' قطعة · ' + dims(modelBox.getSize(new THREE.Vector3()));
   buildPartsList();
   setView('iso');
+  heavyModel = bodyMeshes.reduce((s, m) => s + m.geometry.index.count / 3, 0) > 300000;
+  buildBVHLater();
 }
 
 let selected = null, fadeOthers = false;
@@ -896,7 +925,7 @@ function paint(p) {
   const isSel = selected && selected.group === p.group;
   const faded = fadeOthers && selected && !isSel;
   const mat = p.water ? M.water : isSel ? M.sel : faded ? M.fade : M.body;
-  p.meshes.forEach(m => m.material = mat);
+  p.meshes.forEach(m => { m.material = mat; if (m.userData.lod) m.userData.lod.material = mat; });
   p.lines.forEach(l => { l.material = faded ? M.edgeFade : M.edge; l.visible = p.visible && !p.water; });
   req();
 }
@@ -940,7 +969,15 @@ $('partsList').onclick = e => {
 function frame(box, dir) {
   const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2 || 1;
   const d = dir || camera.position.clone().sub(controls.target).normalize();
-  const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.05;
+  // المسافة اللي تخلّي أركان الصندوق التمانية جوه الشاشة بالطول وبالعرض (الموبايل الواقف ضيّق، فالعرض هو اللي بيحكم غالباً)
+  const right = new THREE.Vector3(0, 1, 0).cross(d).normalize(), up = d.clone().cross(right);
+  const tV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), tH = tV * camera.aspect;
+  let dist = 0; const p = new THREE.Vector3();
+  for (let i = 0; i < 8; i++) {
+    p.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).sub(c);
+    const z = p.dot(d); dist = Math.max(dist, z + Math.abs(p.dot(right)) / tH, z + Math.abs(p.dot(up)) / tV);
+  }
+  dist = (dist || r / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2))) * 1.08;
   controls.target.copy(c); camera.position.copy(c).addScaledVector(d, dist); camera.up.set(0, 1, 0);
   controls.update(); req();
 }
@@ -964,7 +1001,12 @@ function applyCut() {
   const on = !!cut && cutActive;
   clipping.length = 0; if (on) clipping.push(clipPlane);
   if (on) { if (cut.flip) clipPlane.set(cut.d.clone(), -cut.s); else clipPlane.set(cut.d.clone().negate(), cut.s); }
-  if (cutOn.value !== (on ? 1 : 0)) { cutOn.value = on ? 1 : 0; Object.values(M).forEach(m => m.needsUpdate = true); }
+  if (cutOn.value !== (on ? 1 : 0)) {
+    cutOn.value = on ? 1 : 0;
+    // من غير قطع الوش اللي من ورا مش باين أصلاً، فمابنرسموش (نص الشغل على كارت الشاشة). مع القطع لازم يترسم برتقاني
+    [M.body, M.sel].forEach(m => m.side = on ? THREE.DoubleSide : THREE.FrontSide);
+    Object.values(M).forEach(m => m.needsUpdate = true);
+  }
   syncSectionUI(); scheduleContours(); req();
 }
 function syncSectionUI() {
@@ -1040,12 +1082,29 @@ $('draw').addEventListener('pointerup', e => {
 });
 const keep = pt => !(cut && cutActive) || clipPlane.distanceToPoint(pt) >= -1e-6;
 
+// ================================================================ BVH (بيتبني مرة لكل شكل، والنسخ المكررة بتشاركه)
+function ensureBVH(mesh) { const g = mesh.geometry; if (!g.boundsTree) g.computeBoundsTree({ maxLeafSize: 8 }); }
+function ensureAllBVH(list) { list.forEach(ensureBVH); }
+function worldSphere(mesh) {
+  if (mesh.userData.sph) return mesh.userData.sph;
+  const g = mesh.geometry; if (!g.boundingSphere) g.computeBoundingSphere();
+  return mesh.userData.sph = g.boundingSphere.clone().applyMatrix4(mesh.matrixWorld);
+}
+// بيتبني في الخلفية بعد ما الموديل يفتح، قطعة قطعة، علشان أول لمسة تبقى سريعة ومايحصلش تهنيج وقت الفتح
+function buildBVHLater() {
+  const todo = [...new Set(bodyMeshes.map(m => m.geometry))].filter(g => !g.boundsTree).sort((a, b) => b.index.count - a.index.count);
+  const later = bodyMeshes.slice();   // وبعد الـ BVH: بيانات الحروف لكل قطعة (cacheOf) علشان أول حركة للمؤشر ماتتأخرش
+  const step = () => { const t0 = performance.now(); while ((todo.length || later.length) && performance.now() - t0 < 30) { if (todo.length) { const g = todo.shift(); if (!g.boundsTree) g.computeBoundsTree({ maxLeafSize: 8 }); } else cacheOf(later.shift()); } if (todo.length || later.length) setTimeout(step, 16); };
+  setTimeout(step, 300);
+}
+
 // ================================================================ كاش الإحداثيات + بيانات القياس لكل body
 function cacheOf(mesh) {
   if (mesh.userData.mc) return mesh.userData.mc;
   const g = mesh.geometry, pos = g.attributes.position, mw = mesh.matrixWorld, n = pos.count, v = new THREE.Vector3();
-  const W = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(mw); W[3 * i] = v.x; W[3 * i + 1] = v.y; W[3 * i + 2] = v.z; }
+  // إحداثيات المثلثات في العالم (W) بتتحسب أول ما حد يطلبها بس (تلوين وش، سكشن)، مش مع كل حركة للمؤشر
+  let W = null;
+  const getW = () => { if (W) return W; W = new Float32Array(n * 3); for (let i = 0; i < n; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(mw); W[3 * i] = v.x; W[3 * i + 1] = v.y; W[3 * i + 2] = v.z; } return W; };
   const holder = mesh.parent && mesh.parent.userData.f ? mesh.parent : mesh;
   const meta = holder.userData;
   // الحروف المرسومة + خطوط التماس (المخفية) مع بعض، علشان الاتنين يتمسكوا
@@ -1057,9 +1116,26 @@ function cacheOf(mesh) {
     const ix = lg.index ? lg.index.array : null, cnt = ix ? ix.length : lp.count;
     for (let k = 0; k < cnt; k++, o++) { const i = ix ? ix[k] : k; v.fromBufferAttribute(lp, i).applyMatrix4(lw); S[3 * o] = v.x; S[3 * o + 1] = v.y; S[3 * o + 2] = v.z; if (o % 2 === 0) SE[o / 2] = le ? Math.round(le.getX(i)) : -1; }
   }
-  if (!g.boundingSphere) g.computeBoundingSphere();
-  const sphere = g.boundingSphere.clone().applyMatrix4(mw);
-  return mesh.userData.mc = { mesh, W, fid: g.attributes._faceid, idx: g.index.array, meta, S, SE, Vt: Float32Array.from(meta.v || []), sphere };
+  // الحروف متقسمة مجموعات (كل مجموعة لحد 32 قطعة من نفس الحرف) وحوالين كل واحدة كورة،
+  // فالمؤشر بيحسب على الشاشة المجموعات القريبة منه بس، بدل كل الحروف (المواسير فيها آلاف)
+  const SG = []; const ns = SE.length;
+  for (let k = 0; k < ns;) {
+    let j = k + 1; while (j < ns && j - k < 32 && SE[j] === SE[k]) j++;
+    let lo = [1e18, 1e18, 1e18], hi = [-1e18, -1e18, -1e18];
+    for (let q = 6 * k; q < 6 * j; q += 3) for (let a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], S[q + a]); hi[a] = Math.max(hi[a], S[q + a]); }
+    SG.push(k, j, (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2, Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2);
+    k = j;
+  }
+  // نفس الفكرة للأركان: مجموعات من 32 ركن حوالين كل واحدة كورة
+  const Vt = Float32Array.from(meta.v || []), VG = [];
+  for (let k = 0; k < Vt.length / 3; k += 32) {
+    const j = Math.min(Vt.length / 3, k + 32); let lo = [1e18, 1e18, 1e18], hi = [-1e18, -1e18, -1e18];
+    for (let q = 3 * k; q < 3 * j; q += 3) for (let a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], Vt[q + a]); hi[a] = Math.max(hi[a], Vt[q + a]); }
+    VG.push(k, j, (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2, Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2);
+  }
+  const mc = { mesh, fid: g.attributes._faceid, idx: g.index.array, meta, S, SE, SG, Vt, VG, sphere: worldSphere(mesh) };
+  Object.defineProperty(mc, 'W', { get: getW });
+  return mesh.userData.mc = mc;
 }
 
 // ================================================================ خطوط القطع (الكونتور) — بتترسم وبتتقاس
@@ -1078,12 +1154,16 @@ function computeContours() {
       const g = mesh.geometry; if (!g.boundingSphere) g.computeBoundingSphere();
       const sph = g.boundingSphere.clone().applyMatrix4(mesh.matrixWorld);
       if (Math.abs(d.dot(sph.center) - s) > sph.radius) continue;
-      const mc = cacheOf(mesh), W = mc.W, idx = mc.idx, n = W.length / 3, dv = new Float32Array(n);
-      for (let i = 0; i < n; i++) dv[i] = d.x * W[3 * i] + d.y * W[3 * i + 1] + d.z * W[3 * i + 2] - s;
+      const mc = cacheOf(mesh), W = mc.W, idx = g.index.array;
+      const dvf = i => d.x * W[3 * i] + d.y * W[3 * i + 1] + d.z * W[3 * i + 2] - s;
       const byFace = new Map();
-      const cutPt = (i, j, out) => { if (i > j) { const t = i; i = j; j = t; } const t = dv[i] / (dv[i] - dv[j]); out.push(W[3 * i] + (W[3 * j] - W[3 * i]) * t, W[3 * i + 1] + (W[3 * j + 1] - W[3 * i + 1]) * t, W[3 * i + 2] + (W[3 * j + 2] - W[3 * i + 2]) * t); };
-      for (let t = 0; t < idx.length; t += 3) {
-        const a = idx[t], b = idx[t + 1], c = idx[t + 2];
+      const cutPt = (i, j, out) => { if (i > j) { const t = i; i = j; j = t; } const di = dvf(i), t = di / (di - dvf(j)); out.push(W[3 * i] + (W[3 * j] - W[3 * i]) * t, W[3 * i + 1] + (W[3 * j + 1] - W[3 * i + 1]) * t, W[3 * i + 2] + (W[3 * j + 2] - W[3 * i + 2]) * t); };
+      // المثلثات اللي المستوى بيعدّي عليها بس، من الـ BVH (من غير ما نلف على كل المثلثات)
+      ensureBVH(mesh);
+      const lp = new THREE.Plane(d.clone(), -s).applyMatrix4(new THREE.Matrix4().copy(mesh.matrixWorld).invert()), cand = [];
+      g.boundsTree.shapecast({ intersectsBounds: box => lp.intersectsBox(box), intersectsTriangle: (tri, i) => { cand.push(3 * i); return false; } });
+      for (const t of cand) {
+        const a = idx[t], b = idx[t + 1], c = idx[t + 2], dv = { [a]: dvf(a), [b]: dvf(b), [c]: dvf(c) };
         const sa = dv[a] > 0, sb = dv[b] > 0, sc = dv[c] > 0;
         if (sa === sb && sb === sc) continue;
         const f = mc.fid.getX(a); let arr = byFace.get(f); if (!arr) byFace.set(f, arr = []);
@@ -1217,7 +1297,7 @@ function entLabel(e) {
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function rayAt(x, y) { ndc.set(x / VW * 2 - 1, -y / VH * 2 + 1); ray.setFromCamera(ndc, camera); return ray.ray; }
 function visibleBodies() { return bodyMeshes.filter(m => m.userData.part.visible && m.material !== M.fade && !m.userData.part.water); }
-function hitAt(x, y) { rayAt(x, y); return ray.intersectObjects(visibleBodies(), false).find(h => keep(h.point)) || null; }
+function hitAt(x, y) { rayAt(x, y); const vb = visibleBodies(); ensureAllBVH(vb); return ray.intersectObjects(vb, false).find(h => keep(h.point)) || null; }
 function pickClient(cx, cy) { const r = renderer.domElement.getBoundingClientRect(); return hitAt(cx - r.left, cy - r.top); }
 
 const VP = new THREE.Matrix4();
@@ -1238,30 +1318,46 @@ function segDist2D(px, py, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], L =
 let snapMode = 'auto';
 function probe(x, y) {
   prepProj();
-  const r = rayAt(x, y), o = r.origin.clone(), dir = r.direction.clone();
-  const hit = ray.intersectObjects(visibleBodies(), false).find(h => keep(h.point)) || null;
+  const r = rayAt(x, y), o = r.origin.clone(), dir = r.direction.clone(), vb = visibleBodies();
+  ensureAllBVH(vb);
+  const hit = ray.intersectObjects(vb, false).find(h => keep(h.point)) || null;
   const hitT = hit ? hit.distance : Infinity;
   const occTol = hit ? Math.max(1, 10 * pixW(hitT)) : 0;
   const visible = p => keep(p) && p.clone().sub(o).dot(dir) <= hitT + occTol;
   const tolV = snapMode === 'point' ? 16 : 10, tolE = snapMode === 'edge' ? 26 : 12;
   const A = [0, 0], B = [0, 0];
   let bestV = null, bestE = null;
-  for (const mesh of visibleBodies()) {
-    const mc = cacheOf(mesh), sp = mc.sphere, dc = sp.center.distanceTo(o);
-    if (r.distanceSqToPoint(sp.center) > (sp.radius + 30 * pixW(dc)) ** 2) continue;
-    const Vt = mc.Vt;
-    for (let i = 0; i < Vt.length; i += 3) {
-      if (!proj(Vt[i], Vt[i + 1], Vt[i + 2], A)) continue;
-      const dd = Math.hypot(A[0] - x, A[1] - y); if (dd > tolV || (bestV && dd >= bestV.dd)) continue;
-      const p = new THREE.Vector3(Vt[i], Vt[i + 1], Vt[i + 2]); if (!visible(p)) continue;
-      bestV = { dd, p, mc };
+  // هل الكورة (مركز + نص قطر) قريبة من الشعاع بمسافة tolPx بكسل؟ (أرقام بس من غير objects، علشان بتتنادى آلاف المرات)
+  const kpw = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / VH, ox = o.x, oy = o.y, oz = o.z, dx = dir.x, dy = dir.y, dz = dir.z;
+  const nearRay = (cx, cy, cz, rad, tolPx) => {
+    const vx = cx - ox, vy = cy - oy, vz = cz - oz; let t = vx * dx + vy * dy + vz * dz; const dist = Math.sqrt(vx * vx + vy * vy + vz * vz); if (t < 0) t = 0;
+    const ex = vx - dx * t, ey = vy - dy * t, ez = vz - dz * t, lim = rad + tolPx * kpw * Math.max(camera.near, dist);
+    return ex * ex + ey * ey + ez * ez <= lim * lim;
+  };
+  for (const mesh of vb) {
+    // الكرة اللي حوالين القطعة الأول (رخيصة)، وبعدين المجموعات القريبة، وبعدين الحسابات التقيلة
+    const sp = worldSphere(mesh);
+    if (!nearRay(sp.center.x, sp.center.y, sp.center.z, sp.radius, 30)) continue;
+    const mc = cacheOf(mesh);
+    const Vt = mc.Vt, VG = mc.VG;
+    for (let gI = 0; gI < VG.length; gI += 6) {
+      if (!nearRay(VG[gI + 2], VG[gI + 3], VG[gI + 4], VG[gI + 5], tolV + 2)) continue;
+      for (let i = 3 * VG[gI]; i < 3 * VG[gI + 1]; i += 3) {
+        if (!proj(Vt[i], Vt[i + 1], Vt[i + 2], A)) continue;
+        const dd = Math.hypot(A[0] - x, A[1] - y); if (dd > tolV || (bestV && dd >= bestV.dd)) continue;
+        const p = new THREE.Vector3(Vt[i], Vt[i + 1], Vt[i + 2]); if (!visible(p)) continue;
+        bestV = { dd, p, mc };
+      }
     }
-    const S = mc.S;
-    for (let k = 0; k < S.length; k += 6) {
-      if (!proj(S[k], S[k + 1], S[k + 2], A) || !proj(S[k + 3], S[k + 4], S[k + 5], B)) continue;
-      const dd = segDist2D(x, y, A, B); if (dd > tolE || (bestE && dd >= bestE.dd)) continue;
-      const p = segRay(S[k], S[k + 1], S[k + 2], S[k + 3], S[k + 4], S[k + 5], o, dir); if (!visible(p)) continue;
-      bestE = { dd, p, mc, id: mc.SE[k / 6] };
+    const S = mc.S, SG = mc.SG;
+    for (let gI = 0; gI < SG.length; gI += 6) {
+      if (!nearRay(SG[gI + 2], SG[gI + 3], SG[gI + 4], SG[gI + 5], tolE + 2)) continue;
+      for (let k = 6 * SG[gI]; k < 6 * SG[gI + 1]; k += 6) {
+        if (!proj(S[k], S[k + 1], S[k + 2], A) || !proj(S[k + 3], S[k + 4], S[k + 5], B)) continue;
+        const dd = segDist2D(x, y, A, B); if (dd > tolE || (bestE && dd >= bestE.dd)) continue;
+        const p = segRay(S[k], S[k + 1], S[k + 2], S[k + 3], S[k + 4], S[k + 5], o, dir); if (!visible(p)) continue;
+        bestE = { dd, p, mc, id: mc.SE[k / 6] };
+      }
     }
   }
   for (let ci = 0; ci < contours.length; ci++) {
@@ -1589,6 +1685,21 @@ document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => openShe
 // ================================================================ الرسم
 const loupeCam = new THREE.PerspectiveCamera();
 const LOUPE = 124, ZOOM = 4;
+// LOD: القطعة تترسم بالنسخة المبسطة بس لو أقصى فرق فيها (lodErr بالمللي) أقل من نص بكسل على الشاشة عند المسافة دي.
+// يعني الفرق مستحيل يبان، ولما تقرّب، النسخة الكاملة بترجع لوحدها. القياس دايماً من النسخة الكاملة والأرقام المضبوطة.
+function setLOD(zoom) {
+  for (const m of lodBodies) {
+    const sp = worldSphere(m), d = Math.max(camera.near, sp.center.distanceTo(camera.position) - sp.radius);
+    const useLod = m.userData.lodErr * zoom / pixW(d) < 0.5;
+    m.visible = !useLod; m.userData.lod.visible = useLod;
+  }
+}
+// وانت بتلف أو تقرّب موديل تقيل: الدقة بتنزل لـ 1، وبعد ما تسيبه بربع ثانية ترجع زي ما كانت
+const DPR_HI = Math.min(devicePixelRatio, 2), DPR_LO = Math.min(devicePixelRatio, 1);
+let heavyModel = false, dprTimer = 0;
+controls.addEventListener('start', () => { clearTimeout(dprTimer); if (heavyModel && renderer.getPixelRatio() !== DPR_LO) { renderer.setPixelRatio(DPR_LO); req(); } });
+controls.addEventListener('end', () => { if (!heavyModel) return; clearTimeout(dprTimer); dprTimer = setTimeout(() => { renderer.setPixelRatio(DPR_HI); req(); }, 250); });
+
 function loop(now) {
   requestAnimationFrame(loop);
   stepJoy(now);
@@ -1597,8 +1708,10 @@ function loop(now) {
   const k = camera.position.distanceTo(controls.target) * 0.0035;
   [hovGroup, selGroup].forEach(g => g.children.forEach(o => { if (o.userData.dot) o.scale.setScalar(k); }));
   renderer.setScissorTest(false); renderer.setViewport(0, 0, VW, VH);
+  setLOD(1);
   renderer.render(scene, camera);
   if (mode === 'measure') {
+    setLOD(ZOOM);   // العدسة مكبّرة، فمحتاجة تفاصيل أكتر
     // العدسة: نفس الكاميرا بس مكبّرة 4 مرات حوالين المؤشر
     loupeCam.copy(camera); const w = LOUPE / ZOOM;
     loupeCam.setViewOffset(VW, VH, cur.x - w / 2, cur.y - w / 2, w, w); loupeCam.updateProjectionMatrix();
