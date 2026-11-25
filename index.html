@@ -1,0 +1,1402 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2D5B8C">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>عارض الموديلات - Middle East</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#2D5B8C;--bg:#e6eaef;--card:#fff;--ink:#1c2633;--mute:#5d6b7c;--line:#d5dbe3;--cut:#d9542e;--hov:#00a3c4;--safe-b:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Readex Pro",system-ui,sans-serif;font-size:15px;-webkit-user-select:none;user-select:none}
+bdi{unicode-bidi:isolate}
+#top{position:absolute;top:0;left:0;right:0;height:52px;background:var(--blue);color:#fff;display:flex;align-items:center;gap:10px;padding:0 14px;z-index:5}
+#top .t{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#top .s{font-size:12px;opacity:.8}
+#top .grow{flex:1;min-width:0}
+#top .badge{font-size:11px;background:rgba(255,255,255,.16);border-radius:20px;padding:3px 9px;white-space:nowrap}
+#view{position:absolute;top:52px;left:0;right:0;bottom:calc(64px + var(--safe-b))}
+#view canvas{display:block;width:100%;height:100%;touch-action:none}
+#bar{position:absolute;left:0;right:0;bottom:0;height:calc(64px + var(--safe-b));padding-bottom:var(--safe-b);background:var(--card);border-top:1px solid var(--line);display:flex;z-index:6}
+#bar button{flex:1;border:0;background:none;font:inherit;font-size:12px;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer}
+#bar button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+#bar button.on{color:var(--blue);font-weight:500}
+#bar button.on svg{stroke-width:2.2}
+#hint{position:absolute;top:62px;right:10px;left:10px;display:flex;justify-content:center;pointer-events:none;z-index:4}
+#hint span{background:rgba(28,38,51,.82);color:#fff;font-size:13px;border-radius:20px;padding:6px 14px;max-width:100%}
+#hint span:empty{display:none}
+.sheet{position:absolute;left:0;right:0;bottom:calc(64px + var(--safe-b));background:var(--card);border-radius:16px 16px 0 0;box-shadow:0 -4px 18px rgba(0,0,0,.14);z-index:5;max-height:56vh;display:flex;flex-direction:column;transform:translateY(110%);transition:transform .22s ease}
+.sheet.open{transform:none;visibility:visible}
+.sheet:not(.open){visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
+.sheet .hd{display:flex;align-items:center;gap:8px;padding:10px 16px 4px;font-weight:600}
+.sheet .hd .grow{flex:1}
+.sheet .bd{overflow:auto;padding:0 14px 12px}
+.x{border:0;background:#eef1f5;border-radius:50%;width:30px;height:30px;font-size:18px;line-height:30px;color:var(--mute);cursor:pointer;flex:none}
+.row{display:flex;gap:7px;flex-wrap:wrap;margin:7px 0}
+.chip{border:1px solid var(--line);background:#fff;border-radius:22px;padding:7px 12px;font:inherit;font-size:13.5px;color:var(--ink);cursor:pointer}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip.warn{border-color:var(--cut);color:var(--cut)}
+.chip.dis{opacity:.45;pointer-events:none}
+.btn{border:0;background:var(--blue);color:#fff;border-radius:10px;padding:10px 14px;font:inherit;font-size:14px;cursor:pointer}
+.btn.ghost{background:#eef1f5;color:var(--ink)}
+input[type=range]{width:100%;height:30px;accent-color:var(--cut);margin:2px 0}
+.fine{display:flex;gap:6px;align-items:center;direction:ltr;justify-content:center}
+.fine button{border:1px solid var(--line);background:#fff;border-radius:9px;min-width:44px;height:36px;font:inherit;font-size:14px;cursor:pointer;color:var(--ink)}
+.fine input{width:110px;height:36px;border:1px solid var(--line);border-radius:9px;text-align:center;font:inherit;font-size:15px;direction:ltr}
+.lbl{font-size:13px;color:var(--mute);margin-top:6px}
+.big{font-size:22px;font-weight:600;color:var(--ink)}
+.parts .p{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid #eef1f5}
+.parts .p .n{flex:1;min-width:0;font-size:14px;cursor:pointer}
+.parts .p .n small{display:block;color:var(--mute);font-size:12px}
+.parts .p .c{font-size:12px;color:var(--mute);background:#eef1f5;border-radius:10px;padding:2px 8px}
+.eye{border:0;background:none;width:34px;height:34px;cursor:pointer;color:var(--blue)}
+.eye svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.eye.off{color:#b3bcc8}
+#card{position:absolute;left:10px;right:10px;bottom:calc(74px + var(--safe-b));background:var(--card);border-radius:14px;box-shadow:0 4px 16px rgba(0,0,0,.16);padding:12px 14px;z-index:4;display:none}
+#card.show{display:block}
+#card .n{font-weight:600;font-size:15px;margin-left:30px}
+#card .m{font-size:13px;color:var(--mute);margin-top:3px}
+#card .x{position:absolute;top:8px;left:8px}
+#card .row{margin-bottom:0}
+.tag{position:absolute;transform:translate(-50%,-50%);background:var(--ink);color:#fff;font-size:13px;font-weight:500;border-radius:8px;padding:3px 8px;pointer-events:none;white-space:nowrap;z-index:3;direction:ltr}
+#loading{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:9;text-align:center;padding:20px}
+#loading .bar{width:220px;height:6px;border-radius:3px;background:#cfd6df;overflow:hidden}
+#loading .bar i{display:block;height:100%;width:0;background:var(--blue);transition:width .2s}
+#loading .msg{color:var(--mute);font-size:14px}
+#loading .err{color:#b3261e;font-size:14px;max-width:320px}
+/* رسم خط القطع */
+#draw{position:absolute;top:52px;left:0;right:0;bottom:calc(64px + var(--safe-b));z-index:4;display:none;touch-action:none;cursor:crosshair}
+#draw.on{display:block}
+#draw svg{width:100%;height:100%}
+/* المؤشر والعدسة */
+#cursor{position:absolute;width:0;height:0;z-index:4;pointer-events:none;display:none}
+#cursor svg{position:absolute;left:-22px;top:-22px;width:44px;height:44px;overflow:visible}
+#curLbl{position:absolute;left:16px;top:-40px;background:rgba(0,120,150,.92);color:#fff;font-size:12.5px;border-radius:8px;padding:3px 8px;white-space:nowrap;direction:rtl}
+#curLbl.none{background:rgba(28,38,51,.7)}
+#loupe{position:absolute;top:60px;left:8px;width:124px;height:124px;border-radius:6px;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.3);z-index:4;pointer-events:none;display:none}
+#loupe::before,#loupe::after{content:"";position:absolute;background:rgba(217,84,46,.9)}
+#loupe::before{left:50%;top:30%;bottom:30%;width:1.5px;margin-left:-.75px}
+#loupe::after{top:50%;left:30%;right:30%;height:1.5px;margin-top:-.75px}
+#mRes{position:absolute;top:60px;right:8px;left:142px;background:rgba(255,255,255,.96);border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.18);padding:8px 12px;z-index:4;display:none;font-size:13px;line-height:1.55}
+#mRes.show{display:block}
+#mRes .big{font-size:20px}
+#mRes .r{display:flex;justify-content:space-between;gap:8px}
+#mRes .r b{font-weight:500;direction:ltr}
+#mRes .ap{color:var(--mute);font-size:11.5px}
+/* يد التحكم */
+.pad{display:flex;direction:ltr;align-items:center;gap:10px;margin-top:4px}
+#joy{width:112px;height:112px;border-radius:50%;background:#eef1f5;border:1px solid var(--line);position:relative;flex:none;touch-action:none}
+#joy::after{content:"";position:absolute;inset:34px;border-radius:50%;border:1px dashed #b3bcc8}
+#knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:var(--blue);box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:1}
+#selInfo{flex:1;min-width:0;direction:rtl;text-align:right;font-size:12.5px;line-height:1.5;color:var(--ink)}
+#selInfo .s{line-height:1.35;margin-bottom:3px}
+#selInfo .muted{color:var(--mute)}
+#pickBtn{width:84px;height:84px;border-radius:50%;border:0;background:var(--cut);color:#fff;font:inherit;font-size:17px;font-weight:600;flex:none;cursor:pointer;box-shadow:0 3px 8px rgba(217,84,46,.4);touch-action:none}
+#pickBtn:active{transform:scale(.95)}
+
+/* ===== الصفحة الرئيسية والنوافذ ===== */
+#backBtn{border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:10px;width:38px;height:38px;font-size:20px;cursor:pointer;display:none;flex:none}
+#home{position:absolute;top:52px;left:0;right:0;bottom:0;overflow:auto;background:var(--bg);padding:14px 12px calc(20px + var(--safe-b));z-index:7;display:none;-webkit-user-select:text;user-select:text}
+#home.show{display:block}
+.hcard{background:#fff;border-radius:14px;box-shadow:0 2px 8px rgba(20,40,70,.08);padding:14px;margin:0 auto 12px;max-width:720px}
+.hcard h3{margin:0 0 6px;font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
+.hcard h3 .grow{flex:1}
+.hcard p{margin:4px 0;color:var(--mute);font-size:13.5px;line-height:1.6}
+.mrow{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #eef1f5;flex-wrap:wrap}
+.mrow:last-child{border-bottom:0}
+.mrow .nm{flex:1 1 180px;min-width:0}
+.mrow .nm b{display:block;font-weight:500;font-size:14.5px;overflow-wrap:anywhere}
+.mrow .nm small{color:var(--mute);font-size:12px}
+.mrow .acts{display:flex;gap:6px;flex-wrap:wrap}
+.sbtn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink);white-space:nowrap}
+.sbtn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.sbtn.red{color:#b3261e;border-color:#f0c4c0}
+.pill{display:inline-block;font-size:11.5px;border-radius:10px;padding:1px 8px;margin-inline-start:6px;background:#eef1f5;color:var(--mute);font-weight:400}
+.pill.lock{background:#fff3e0;color:#9a5b00}.pill.off{background:#fdecea;color:#b3261e}.pill.old{background:#e8f0fe;color:#1a56b0}
+.banner{background:#e8f0fe;border-radius:10px;padding:10px 12px;margin:8px 0;font-size:13.5px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dlg{position:absolute;inset:0;background:rgba(15,23,35,.45);z-index:30;display:none;align-items:center;justify-content:center;padding:14px}
+.dlg.show{display:flex}
+.dlg .box{background:#fff;border-radius:16px;max-width:480px;width:100%;max-height:92%;overflow:auto;padding:16px;-webkit-user-select:text;user-select:text}
+.dlg h3{margin:0 0 10px;font-size:17px;font-weight:600}
+.fld{margin:10px 0}
+.fld>label{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
+.fld input[type=text],.fld input[type=password],.fld input[type=file]{width:100%;min-height:42px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font:inherit;font-size:15px;background:#fff}
+.radios{display:flex;gap:8px;flex-wrap:wrap}
+.radios label{border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:13.5px;cursor:pointer}
+.radios input{margin-inline-end:5px}
+.dlg .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.err{color:#b3261e;font-size:13px;min-height:18px;margin-top:6px}
+.prog{height:8px;background:#e4e9ef;border-radius:4px;overflow:hidden;margin:6px 0}
+.prog i{display:block;height:100%;width:0;background:var(--blue);transition:width .25s}
+ol.steps{margin:6px 0;padding-inline-start:22px;font-size:14px;line-height:1.9;color:var(--mute)}
+ol.steps li.cur{color:var(--ink);font-weight:500}
+ol.steps li.ok{color:#1e7a3e}
+.qrwrap{text-align:center}
+.qrwrap canvas{width:220px;height:auto;border:1px solid var(--line);border-radius:10px}
+.linkbox{direction:ltr;text-align:left;font-size:13px;background:#f3f6f9;border-radius:8px;padding:8px;word-break:break-all;margin:8px 0}
+#toast{position:absolute;left:50%;bottom:calc(84px + var(--safe-b));transform:translateX(-50%);background:rgba(28,38,51,.92);color:#fff;font-size:13.5px;border-radius:20px;padding:8px 16px;z-index:40;display:none;max-width:90%;text-align:center}
+#toast.show{display:block}
+</style>
+<script type="importmap">
+{"imports":{"three":"./vendor/three/build/three.module.js","three/addons/":"./vendor/three/examples/jsm/"}}
+</script>
+</head>
+<body>
+<header id="top">
+  <button id="backBtn" aria-label="رجوع للصفحة الرئيسية">→</button>
+  <div class="grow"><div class="t" id="title">عارض الموديلات</div><div class="s" id="sub">Middle East</div></div>
+  <span class="badge" id="cached" hidden>متخزن على الموبايل</span>
+</header>
+<div id="view"></div>
+<div id="draw"><svg><line id="drawLine" stroke="#d9542e" stroke-width="3" stroke-dasharray="8 6" x1="0" y1="0" x2="0" y2="0"/></svg></div>
+<div id="hint"><span id="hintTxt"></span></div>
+<div id="tags"></div>
+<div id="cursor"><svg viewBox="-22 -22 44 44"><circle r="13" fill="none" stroke="#fff" stroke-width="4"/><circle r="13" fill="none" stroke="#d9542e" stroke-width="2"/><path d="M-21 0h13M8 0h13M0 -21v13M0 8v13" stroke="#fff" stroke-width="4"/><path d="M-21 0h13M8 0h13M0 -21v13M0 8v13" stroke="#d9542e" stroke-width="2"/><circle r="1.6" fill="#d9542e"/></svg><div id="curLbl" class="none"></div></div>
+<div id="loupe"></div>
+<div id="mRes"></div>
+<div id="home"></div>
+<div class="dlg" id="dlg"><div class="box" id="dlgBox"></div></div>
+<div id="toast"></div>
+
+<div id="card">
+  <button class="x" id="cardX" aria-label="قفل">×</button>
+  <div class="n" id="cardName"></div>
+  <div class="m" id="cardMeta"></div>
+  <div class="row">
+    <button class="btn ghost" id="cZoom">قرّب عليها</button>
+    <button class="btn ghost" id="cAlone">لوحدها</button>
+    <button class="btn ghost" id="cFade">شفّف الباقي</button>
+    <button class="btn ghost" id="cHide">إخفاء</button>
+  </div>
+</div>
+
+<section class="sheet" id="sView">
+  <div class="hd"><span class="grow">المنظر</span><button class="x" data-close>×</button></div>
+  <div class="bd">
+    <div class="row">
+      <button class="chip" data-view="iso">أيزو</button>
+      <button class="chip" data-view="front">أمامي</button>
+      <button class="chip" data-view="side">جانبي</button>
+      <button class="chip" data-view="top">من فوق</button>
+      <button class="chip" data-view="bottom">من تحت</button>
+    </div>
+    <div class="row"><button class="btn" id="showAll">إظهار كل القطع ورجوع للأول</button></div>
+    <div class="lbl">لف بصباع واحد، وقرّب أو بعّد بصباعين، وحرّك بصباعين. ودوس مرتين على أي حتة علشان الموديل يلف حواليها.</div>
+  </div>
+</section>
+
+<section class="sheet" id="sSection">
+  <div class="hd"><span class="grow">قطع سكشن</span><button class="x" data-close>×</button></div>
+  <div class="bd">
+    <div class="row">
+      <button class="chip" data-axis="y">أفقي</button>
+      <button class="chip" data-axis="x">رأسي (عرضي)</button>
+      <button class="chip" data-axis="z">رأسي (طولي)</button>
+      <button class="chip" id="secDraw">ارسم خط القطع</button>
+    </div>
+    <div class="row">
+      <button class="chip" id="secFlip">اقلب الناحية</button>
+      <button class="chip dis" id="secToggle">من غير قطع</button>
+      <button class="chip warn dis" id="secDel">احذف القطع</button>
+    </div>
+    <input type="range" id="secSlider" min="0" max="10000" value="5000">
+    <div class="fine">
+      <button data-step="-10">−10</button><button data-step="-1">−1</button>
+      <input id="secNum" type="number" inputmode="decimal" step="any">
+      <button data-step="1">+1</button><button data-step="10">+10</button>
+    </div>
+    <div class="lbl" id="secVal">اختار اتجاه القطع، أو ارسم خط على الموديل.</div>
+  </div>
+</section>
+
+<section class="sheet" id="sMeasure">
+  <div class="hd"><span class="grow">القياس</span><button class="chip" id="mClear">امسح</button><button class="x" data-close>×</button></div>
+  <div class="bd">
+    <div class="row" style="margin-top:2px">
+      <button class="chip on" data-snap="auto">تلقائي</button>
+      <button class="chip" data-snap="point">نقطة</button>
+      <button class="chip" data-snap="edge">حرف / خط</button>
+      <button class="chip" data-snap="face">سطح</button>
+    </div>
+    <div class="pad">
+      <div id="joy"><div id="knob"></div></div>
+      <div id="selInfo"></div>
+      <button id="pickBtn">حدد</button>
+    </div>
+  </div>
+</section>
+
+<section class="sheet" id="sParts">
+  <div class="hd"><span class="grow">القطع <small id="partsCount" style="color:var(--mute);font-weight:400"></small></span><button class="x" data-close>×</button></div>
+  <div class="bd parts" id="partsList"></div>
+</section>
+
+<nav id="bar">
+  <button data-sheet="sView"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>المنظر</button>
+  <button data-sheet="sSection"><svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4-8 4z"/><path d="M4 8v8l8 4 8-4V8"/><path d="M2 13h20" stroke-dasharray="2 2"/></svg>سكشن</button>
+  <button data-sheet="sMeasure"><svg viewBox="0 0 24 24"><rect x="2.5" y="8" width="19" height="8" rx="1.5"/><path d="M6 8v3M9 8v4M12 8v3M15 8v4M18 8v3"/></svg>قياس</button>
+  <button data-sheet="sParts"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="5" cy="6" r="1.2"/><circle cx="5" cy="12" r="1.2"/><circle cx="5" cy="18" r="1.2"/></svg>القطع</button>
+</nav>
+
+<div id="loading">
+  <div class="big">عارض الموديلات</div>
+  <div class="bar"><i id="ldBar"></i></div>
+  <div class="msg" id="ldMsg">بيجهّز...</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+import qrcode from './vendor/qrcode.mjs';
+
+const $ = id => document.getElementById(id);
+const V3 = (a, i = 0) => new THREE.Vector3(a[i], a[i + 1], a[i + 2]);
+const nf1 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
+const fmt = v => nf1.format(v);
+const fmtL = v => (Math.abs(v) < 100 ? nf2 : nf1).format(v);          // المسافات الصغيرة برقمين عشريين
+const dims = s => '<bdi dir="ltr" style="white-space:nowrap">' + fmt(s.x) + ' × ' + fmt(s.z) + ' × ' + fmt(s.y) + ' mm</bdi>';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ================================================================ المشهد
+const view = $('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.localClippingEnabled = true;
+renderer.setClearColor(0xe6eaef);
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 1, 1e6);
+scene.add(camera);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a96a6, 1.6));
+const head = new THREE.DirectionalLight(0xffffff, 1.6); head.position.set(0.4, 0.6, 1); camera.add(head);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = false;
+controls.zoomToCursor = true;
+controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+
+let needRender = true, hoverDirty = false;
+const req = () => { needRender = true; hoverDirty = true; };
+controls.addEventListener('change', req);
+let VW = 1, VH = 1;
+function resize() {
+  VW = view.clientWidth; VH = view.clientHeight;
+  renderer.setSize(VW, VH, false); camera.aspect = VW / VH; camera.updateProjectionMatrix();
+  fatMats.forEach(m => m.resolution.set(VW, VH)); req();
+}
+addEventListener('resize', resize);
+
+// ================================================================ الخامات
+const clipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+const clipping = [];
+const cutOn = { value: 0 };
+function bodyMaterial(opts) {
+  const m = new THREE.MeshPhongMaterial(Object.assign({
+    color: 0xc6ccd4, specular: 0x2a2f36, shininess: 35, side: THREE.DoubleSide,
+    polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, clippingPlanes: clipping,
+  }, opts));
+  m.onBeforeCompile = sh => {
+    sh.uniforms.uCut = cutOn;
+    sh.fragmentShader = 'uniform float uCut;\n' + sh.fragmentShader.replace('#include <dithering_fragment>',
+      '#include <dithering_fragment>\n if (!gl_FrontFacing && uCut > 0.5) gl_FragColor = vec4(0.85, 0.33, 0.18, gl_FragColor.a);' +
+      '\n gl_FragDepth = gl_FragCoord.z + (gl_FrontFacing ? 0.0 : fwidth(gl_FragCoord.z) * 4.0 + 2e-6);');
+  };
+  return m;
+}
+const M = {
+  body: bodyMaterial(),
+  sel: bodyMaterial({ color: 0x4fb3bd, emissive: 0x0b4a52 }),
+  fade: bodyMaterial({ transparent: true, opacity: 0.12, depthWrite: false }),
+  water: bodyMaterial({ color: 0x4a90d9, transparent: true, opacity: 0.25, depthWrite: false }),
+  edge: new THREE.LineBasicMaterial({ color: 0x1d2530, clippingPlanes: clipping }),
+  edgeFade: new THREE.LineBasicMaterial({ color: 0x1d2530, transparent: true, opacity: 0.08, depthWrite: false, clippingPlanes: clipping }),
+};
+const fatMats = [];
+function fatMat(color, width) { const m = new LineMaterial({ color, linewidth: width, depthTest: false, transparent: true }); m.resolution.set(VW, VH); fatMats.push(m); return m; }
+const FM = { hov: fatMat(0x00a3c4, 4), sel: fatMat(0xff6d00, 4.5), dim: fatMat(0xd9542e, 2.5) };
+const faceHov = new THREE.MeshBasicMaterial({ color: 0x00a3c4, transparent: true, opacity: 0.45, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, depthWrite: false });
+const faceSel = new THREE.MeshBasicMaterial({ color: 0xff8a3d, transparent: true, opacity: 0.6, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, depthWrite: false });
+const dotHov = new THREE.MeshBasicMaterial({ color: 0x00a3c4, depthTest: false });
+const dotSel = new THREE.MeshBasicMaterial({ color: 0xff6d00, depthTest: false });
+const dotGeo = new THREE.SphereGeometry(1, 14, 10);
+
+// ================================================================ السيرفر والتخزين على الموبايل
+// API: على الجهاز (localhost / شبكة المكتب) بيكلّم السيرفر التجريبي /api، وعلى النت بيكلّم سيرفر جوجل بتاع الشركة.
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwz4cUlWcIq3hip0Xhz26-aSf2l46LYcV20-hOJ74VWGTzPpCYSxxx27XyRZybQ6Jc77Q/exec';
+const params = new URLSearchParams(location.search);
+const API = window.ME_API || (/^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname) ? '/api' : GAS_URL);
+const APP_FMT = 2;               // لازم يساوي FMT في tools/convert-core.mjs
+const OFFLINE_DAYS = 7;          // الموديل بيفتح من غير نت لحد المدة دي من آخر مرة اتأكدنا من السيرفر
+const CHUNK = 4 * 1024 * 1024;   // حجم الجزء في الرفع والتنزيل (حدود جوجل)
+const BASE = new URL('./', location.href).href;
+let modelTitle = '';
+
+class Offline extends Error {}
+async function api(q, ms = 30000) {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+  let r;
+  try { r = await fetch(API, { method: 'POST', body: JSON.stringify(q), signal: ctl.signal }); }
+  catch (e) { throw new Offline('offline'); }
+  finally { clearTimeout(t); }
+  if (!r.ok) throw new Offline('HTTP ' + r.status);
+  return r.json();
+}
+const LS = {
+  get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? d; } catch (e) { return d; } },
+  set(k, v) { localStorage.setItem(k, JSON.stringify(v)); },
+};
+const localIdx = () => LS.get('me_models', {});
+const engTok = () => { const e = LS.get('me_eng', null); return e && e.exp > Date.now() ? e.tok : null; };
+const cacheKey = id => new Request(location.origin + '/__me_model/' + encodeURIComponent(id));
+async function cacheGet(id) { try { const c = await caches.open('me-models-v1'); const r = await c.match(cacheKey(id)); return r ? new Uint8Array(await r.arrayBuffer()) : null; } catch (e) { return null; } }
+async function cachePut(id, bytes) { try { const c = await caches.open('me-models-v1'); await c.put(cacheKey(id), new Response(bytes)); return true; } catch (e) { return false; } }
+async function cacheDel(id) { try { const c = await caches.open('me-models-v1'); await c.delete(cacheKey(id)); } catch (e) {} }
+// أي حاجة في الكاش مش موديل بالشكل الجديد (من نسخ التجربة القديمة) بتتمسح
+async function tidyCache() { try { const c = await caches.open('me-models-v1'); for (const r of await c.keys()) if (!r.url.includes('/__me_model/')) await c.delete(r); } catch (e) {} }
+async function forget(id) { await cacheDel(id); const I = localIdx(); delete I[id]; LS.set('me_models', I); }
+
+const b64ToBytes = async b64 => new Uint8Array(await (await fetch('data:application/octet-stream;base64,' + b64)).arrayBuffer());
+const bytesToB64 = bytes => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = rej; fr.readAsDataURL(new Blob([bytes])); });
+const joinParts = parts => { let n = 0; parts.forEach(p => n += p.length); const o = new Uint8Array(n); let k = 0; parts.forEach(p => { o.set(p, k); k += p.length; }); return o; };
+async function gz(bytes, dir) { const s = new Blob([bytes]).stream().pipeThrough(dir === 'd' ? new DecompressionStream('gzip') : new CompressionStream('gzip')); return new Uint8Array(await new Response(s).arrayBuffer()); }
+const MB = n => (n / 1e6).toFixed(1) + ' MB';
+const fmtDate = s => { try { const d = new Date(s); return d.toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; } };
+const validId = id => /^[A-Za-z0-9]{6,16}$/.test(id || '');
+function toast(t, ms = 3000) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.tm); toast.tm = setTimeout(() => el.classList.remove('show'), ms); }
+
+// ---------------------------------------------------------------- شاشة التحميل والرسائل
+function loadingMsg(t, pct) { $('ldMsg').textContent = t; if (pct !== undefined) $('ldBar').style.width = Math.round(pct) + '%'; }
+function fail(msg) {
+  const ld = $('loading'); ld.style.display = 'flex';
+  $('ldMsg').innerHTML = '<div class="err" style="font-size:15px">' + esc(msg) + '</div><div style="margin-top:14px"><button class="btn" onclick="location.href=\'' + BASE + '\'">الصفحة الرئيسية</button></div>';
+  $('ldBar').parentElement.style.display = 'none';
+}
+
+// ---------------------------------------------------------------- فتح موديل بالكود
+async function openModel(id) {
+  if (!validId(id)) return fail('اللينك ده مش صحيح.');
+  loadingMsg('بيتأكد من الموديل...', 3);
+  const I = localIdx(), e = I[id], toks = LS.get('me_toks', {});
+  let meta;
+  try { meta = await api({ fn: 'meta', id, tok: toks[id], etok: engTok() }, 15000); }
+  catch (err) {
+    const bytes = e ? await cacheGet(id) : null;
+    if (bytes && Date.now() - (e.lastOk || 0) < OFFLINE_DAYS * 864e5) { toast('مفيش نت: فاتح النسخة اللي على الموبايل'); return loadBytes(bytes, e); }
+    return fail(bytes ? 'عدّى أكتر من ' + OFFLINE_DAYS + ' أيام والموبايل ما شافش نت. شغّل النت مرة علشان نتأكد إن الموديل لسه متاح، وبعدها يفتح عادي.' : 'محتاج نت علشان الموديل ينزل أول مرة.');
+  }
+  if (meta.gone) { await forget(id); return fail('الموديل ده اتقفل أو اتشال من السيستم. لو محتاجه كلّم المهندس.'); }
+  if (meta.need === 'pw') {
+    await cacheDel(id); delete toks[id]; LS.set('me_toks', toks);
+    const tok = await askModelPw(id, meta.name, !!(e && e.ver));
+    if (!tok) { location.href = BASE; return; }
+    toks[id] = tok; LS.set('me_toks', toks); return openModel(id);
+  }
+  if (!meta.ok) return fail('حصلت مشكلة في السيرفر: ' + (meta.err || ''));
+  let bytes = e && e.ver === meta.ver ? await cacheGet(id) : null;
+  if (!bytes) {
+    try { bytes = await downloadModel(id, meta, toks[id]); }
+    catch (err) { if (err.message === 'changed') return openModel(id); return fail(err instanceof Offline ? 'النت فصل وهو بينزّل الموديل. جرّب تاني.' : 'حصلت مشكلة وهو بينزّل الموديل: ' + err.message); }
+    const ok = await cachePut(id, bytes);
+    if (!ok) toast('الموديل اتفتح، بس مش هيتخزن على الموبايل ده (لازم https)');
+  }
+  I[id] = { name: meta.name, ver: meta.ver, size: bytes.length, fmt: meta.fmt, lastOk: Date.now(), opened: Date.now() };
+  LS.set('me_models', I);
+  loadBytes(bytes, I[id]);
+}
+async function downloadModel(id, meta, tok) {
+  const parts = [];
+  for (let i = 0; i < meta.parts; i++) {
+    loadingMsg('بينزّل الموديل: جزء ' + (i + 1) + ' من ' + meta.parts + ' (' + MB(meta.size) + ')', 5 + 90 * i / meta.parts);
+    let r, tries = 0;
+    for (;;) { try { r = await api({ fn: 'part', id, i, tok, etok: engTok(), ver: meta.ver }, 120000); break; } catch (e) { if (++tries >= 3) throw e; await new Promise(z => setTimeout(z, 1500)); } }
+    if (r.err === 'changed') throw new Error('changed');
+    if (!r.ok) throw new Error(r.err || r.need || 'part');
+    parts.push(await b64ToBytes(r.b64));
+  }
+  loadingMsg('بيفك الموديل...', 97);
+  return joinParts(parts);
+}
+async function loadBytes(bytes, entry) {
+  modelTitle = entry && entry.name || '';
+  loadingMsg('بيفك الموديل...', 98);
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const buf = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength ? bytes.buffer : bytes.slice().buffer;
+  const gltf = await loader.parseAsync(buf, '');
+  setupModel(gltf);
+  $('loading').remove();
+  const fmt = +(gltf.parser.json.scenes?.[0]?.extras?.meta || 0);
+  if (fmt < APP_FMT) toast('الموديل ده معمول بنسخة قديمة. العرض شغال، بس القياس المضبوط محتاج المهندس يحدّثه.', 6000);
+  else { hint('دوس على أي قطعة علشان تعرف اسمها'); setTimeout(() => { if (mode === 'view' && !$('draw').classList.contains('on')) hint(''); }, 5000); }
+  window.__viewer = { THREE, scene, camera, controls, parts, groups, bodyMeshes, probe, pair, single, req, renderer, cur, placeCursor, getSel: () => sel, getHover: () => hoverEnt, contours: () => contours, getCut: () => cut, setCut: (c, a) => { cut = c; cutActive = a; applyCut(); }, computeContours, openSheet };
+}
+
+// ---------------------------------------------------------------- نوافذ (dialogs)
+function dialog(html) { $('dlgBox').innerHTML = html; $('dlg').classList.add('show'); return $('dlgBox'); }
+function closeDialog() { $('dlg').classList.remove('show'); $('dlgBox').innerHTML = ''; }
+function confirmBox(title, text, okLabel = 'تمام', danger = false) {
+  return new Promise(res => {
+    const b = dialog(`<h3>${esc(title)}</h3><p style="font-size:14px;line-height:1.7">${text}</p><div class="btns"><button class="btn ${danger ? '' : ''}" id="cOk" style="${danger ? 'background:#b3261e' : ''}">${esc(okLabel)}</button><button class="btn ghost" id="cNo">لأ</button></div>`);
+    b.querySelector('#cOk').onclick = () => { closeDialog(); res(true); };
+    b.querySelector('#cNo').onclick = () => { closeDialog(); res(false); };
+  });
+}
+function askModelPw(id, name, changed) {
+  return new Promise(res => {
+    const b = dialog(`<h3>الموديل ده عليه كلمة سر</h3><p style="font-size:14px"><bdi>${esc(name || '')}</bdi></p>
+      ${changed ? '<p style="font-size:13px;color:#9a5b00">كلمة السر اتغيرت. اكتب الجديدة.</p>' : ''}
+      <div class="fld"><label>كلمة السر</label><input type="password" id="mpw" autocomplete="off" inputmode="text"></div><div class="err" id="mpwErr"></div>
+      <div class="btns"><button class="btn" id="mpwOk">افتح</button><button class="btn ghost" id="mpwNo">رجوع</button></div>`);
+    const inp = b.querySelector('#mpw'); setTimeout(() => inp.focus(), 50);
+    const go = async () => {
+      const pw = inp.value.trim(); if (!pw) { b.querySelector('#mpwErr').textContent = 'اكتب كلمة السر الأول'; return; }
+      b.querySelector('#mpwErr').textContent = '...';
+      try {
+        const r = await api({ fn: 'unlock', id, pw });
+        if (r.ok) { closeDialog(); res(r.tok); }
+        else if (r.gone) { closeDialog(); res(null); }
+        else b.querySelector('#mpwErr').textContent = 'كلمة السر غلط';
+      } catch (e) { b.querySelector('#mpwErr').textContent = 'مفيش نت. جرّب تاني.'; }
+    };
+    b.querySelector('#mpwOk').onclick = go; inp.onkeydown = ev => { if (ev.key === 'Enter') go(); };
+    b.querySelector('#mpwNo').onclick = () => { closeDialog(); res(null); };
+  });
+}
+
+// ---------------------------------------------------------------- الصفحة الرئيسية
+async function showHome() {
+  $('loading').remove();
+  $('title').textContent = 'عارض الموديلات'; $('sub').textContent = 'Middle East';
+  $('home').classList.add('show');
+  renderHome();
+}
+let engModels = null;
+async function renderHome() {
+  const I = localIdx(), ids = Object.keys(I).sort((a, b) => (I[b].opened || 0) - (I[a].opened || 0));
+  const et = engTok();
+  let h = `<div class="hcard"><h3><span class="grow">الموديلات اللي على الموبايل ده</span></h3>`;
+  if (!ids.length) h += `<p>مفيش موديلات لسه. صوّر الـ QR اللي على اللوحة، أو افتح اللينك اللي اتبعتلك، والموديل هيتفتح ويتخزن هنا.</p>`;
+  ids.forEach(id => {
+    const e = I[id];
+    h += `<div class="mrow"><div class="nm"><b><bdi>${esc(e.name || id)}</bdi></b><small>${MB(e.size || 0)} · اتفتح ${fmtDate(e.opened)}</small></div>
+      <div class="acts"><button class="sbtn pri" data-open="${id}">افتح</button><button class="sbtn red" data-del="${id}">امسح من الموبايل</button></div></div>`;
+  });
+  h += `</div>`;
+  if (et) {
+    h += `<div class="hcard"><h3><span class="grow">المهندسين</span><button class="sbtn" id="engOut">خروج</button></h3>
+      <div class="btns" style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px"><button class="btn" id="upNew">ارفع موديل جديد</button><button class="btn ghost" id="engRefresh">تحديث اللستة</button></div>
+      <div id="engList"><p>بيجيب الموديلات...</p></div></div>`;
+  } else {
+    h += `<div class="hcard"><h3>المهندسين</h3><p>رفع الموديلات وإدارتها للمهندسين بس.</p><div style="margin-top:8px"><button class="btn ghost" id="engIn">دخول المهندسين</button></div></div>`;
+  }
+  $('home').innerHTML = h;
+  $('home').onclick = onHomeClick;
+  if (et) loadEngList();
+}
+async function onHomeClick(ev) {
+  const t = ev.target.closest('button'); if (!t) return;
+  if (t.dataset.open) { location.href = BASE + '?p=' + t.dataset.open; return; }
+  if (t.dataset.del) {
+    const e = localIdx()[t.dataset.del];
+    if (await confirmBox('مسح الموديل من الموبايل', 'هيتمسح <bdi>' + esc(e?.name || '') + '</bdi> من الموبايل ده بس. تقدر تفتحه تاني من نفس اللينك أو الـ QR طول ما المشروع مفتوح.', 'امسح')) { await forget(t.dataset.del); renderHome(); toast('اتمسح من الموبايل'); }
+    return;
+  }
+  if (t.id === 'engIn') return engLogin();
+  if (t.id === 'engOut') { localStorage.removeItem('me_eng'); renderHome(); return; }
+  if (t.id === 'upNew') return uploadDialog(null);
+  if (t.id === 'engRefresh') return loadEngList();
+  if (t.id === 'reconvAll') return reconvertAll();
+  const id = t.dataset.id, m = engModels && engModels.find(x => x.id === id); if (!m) return;
+  if (t.dataset.act === 'share') return shareDialog(m);
+  if (t.dataset.act === 'edit') return editDialog(m);
+  if (t.dataset.act === 'newver') return uploadDialog(m);
+  if (t.dataset.act === 'view') { location.href = BASE + '?p=' + m.id; return; }
+  if (t.dataset.act === 'toggle') {
+    const close = m.status === 'open';
+    if (close && !await confirmBox('قفل المشروع', 'اللينك هيبطل، والموديل هيتمسح من موبايلات العمال أول ما يفتحوا وفيه نت. تقدر تفتحه تاني بعدين من هنا.', 'اقفل')) return;
+    await engCall({ fn: 'update', id, status: close ? 'closed' : 'open' }); toast(close ? 'المشروع اتقفل' : 'المشروع اتفتح تاني'); return loadEngList();
+  }
+  if (t.dataset.act === 'remove') {
+    if (!await confirmBox('مسح نهائي', 'هيتمسح <bdi>' + esc(m.name) + '</bdi> من السيستم كله: الموديل والـ STEP الأصلي اللي اترفع (بيروحوا سلة Drive وبيتمسحوا بعد 30 يوم). اللينك هيبطل عند الكل.', 'امسح نهائي', true)) return;
+    await engCall({ fn: 'remove', id }); toast('اتمسح'); return loadEngList();
+  }
+}
+async function engCall(q, ms) {
+  try {
+    const r = await api(Object.assign({ etok: engTok() }, q), ms);
+    if (r.err === 'auth') { localStorage.removeItem('me_eng'); toast('لازم تدخل تاني بكلمة سر المهندسين'); renderHome(); throw new Error('auth'); }
+    if (!r.ok) throw new Error(r.err || (r.gone ? 'الموديل مش موجود' : 'error'));
+    return r;
+  } catch (e) { if (e instanceof Offline) toast('مفيش نت'); throw e; }
+}
+function engLogin() {
+  const b = dialog(`<h3>دخول المهندسين</h3><div class="fld"><label>كلمة السر</label><input type="password" id="epw" autocomplete="current-password"></div><div class="err" id="epwErr"></div>
+    <div class="btns"><button class="btn" id="epwOk">دخول</button><button class="btn ghost" id="epwNo">رجوع</button></div>`);
+  const inp = b.querySelector('#epw'); setTimeout(() => inp.focus(), 50);
+  const go = async () => {
+    b.querySelector('#epwErr').textContent = '...';
+    try {
+      const r = await api({ fn: 'login', pw: inp.value.trim() });
+      if (r.ok) { LS.set('me_eng', { tok: r.tok, exp: r.exp }); closeDialog(); renderHome(); }
+      else b.querySelector('#epwErr').textContent = 'كلمة السر غلط';
+    } catch (e) { b.querySelector('#epwErr').textContent = 'مفيش نت'; }
+  };
+  b.querySelector('#epwOk').onclick = go; inp.onkeydown = ev => { if (ev.key === 'Enter') go(); };
+  b.querySelector('#epwNo').onclick = closeDialog;
+}
+async function loadEngList() {
+  const box = $('engList'); if (!box) return;
+  let r; try { r = await engCall({ fn: 'list' }); } catch (e) { box.innerHTML = '<p class="err">ما قدرتش أجيب اللستة.</p>'; return; }
+  engModels = r.models;
+  const old = engModels.filter(m => m.fmt < APP_FMT && m.stepParts > 0);
+  let h = '';
+  if (old.length) h += `<div class="banner"><span style="flex:1">فيه ${old.length} موديل معمولين بنسخة قديمة من التطبيق. التحديث بيعيد تحويلهم من الـ STEP الأصلي، على نفس اللينكات.</span><button class="sbtn pri" id="reconvAll">حدّثهم دلوقتي</button></div>`;
+  if (!engModels.length) h += '<p>مفيش موديلات مرفوعة لسه.</p>';
+  engModels.forEach(m => {
+    h += `<div class="mrow"><div class="nm"><b><bdi>${esc(m.name)}</bdi>${m.hasPw ? '<span class="pill lock">بكلمة سر</span>' : ''}${m.status !== 'open' ? '<span class="pill off">مقفول</span>' : ''}${m.fmt < APP_FMT ? '<span class="pill old">نسخة قديمة</span>' : ''}</b>
+      <small>${MB(m.glbSize)} · اتعدل ${fmtDate(m.updated)}${m.stepName ? ' · <bdi>' + esc(m.stepName) + '</bdi>' : ''}</small></div>
+      <div class="acts"><button class="sbtn pri" data-act="share" data-id="${m.id}">اللينك و QR</button><button class="sbtn" data-act="view" data-id="${m.id}">افتح</button>
+      <button class="sbtn" data-act="edit" data-id="${m.id}">الاسم وكلمة السر</button><button class="sbtn" data-act="newver" data-id="${m.id}">نسخة جديدة</button>
+      <button class="sbtn" data-act="toggle" data-id="${m.id}">${m.status === 'open' ? 'اقفل' : 'افتح تاني'}</button><button class="sbtn red" data-act="remove" data-id="${m.id}">امسح</button></div></div>`;
+  });
+  box.innerHTML = h;
+}
+
+// ---------------------------------------------------------------- كلمة سر الموديل (جزء مشترك في النوافذ)
+function pwFields(existing) {
+  const opts = existing
+    ? [['keep', 'زي ما هي'], ['none', 'من غير كلمة سر'], ['set', existing.hasPw ? 'غيّرها' : 'حط كلمة سر']]
+    : [['none', 'من غير كلمة سر'], ['set', 'بكلمة سر']];
+  return `<div class="fld"><label>كلمة السر${existing ? ' (حالياً: ' + (existing.hasPw ? 'عليه كلمة سر' : 'من غير') + ')' : ''}</label><div class="radios">` +
+    opts.map(([v, l], i) => `<label><input type="radio" name="pwm" value="${v}" ${i === 0 ? 'checked' : ''}>${l}</label>`).join('') +
+    `</div><input type="text" id="pwv" placeholder="كلمة السر" style="margin-top:8px;display:none" autocomplete="off"></div>`;
+}
+function bindPw(b) {
+  const sync = () => { const v = b.querySelector('input[name=pwm]:checked').value; b.querySelector('#pwv').style.display = v === 'set' ? 'block' : 'none'; };
+  b.querySelectorAll('input[name=pwm]').forEach(r => r.onchange = sync);
+  return () => { const mode = b.querySelector('input[name=pwm]:checked').value, value = b.querySelector('#pwv').value.trim(); return mode === 'set' ? (value ? { mode, value } : null) : { mode }; };
+}
+
+// ---------------------------------------------------------------- رفع موديل (جديد أو نسخة جديدة على نفس اللينك)
+function uploadDialog(existing) {
+  const b = dialog(`<h3>${existing ? 'نسخة جديدة من: <bdi>' + esc(existing.name) + '</bdi>' : 'ارفع موديل جديد'}</h3>
+    ${existing ? '<p style="font-size:13px;color:var(--mute)">اللينك والـ QR اللي على اللوحة مش هيتغيروا، والعمال هينزلهم الجديد لوحده.</p>' : ''}
+    <div class="fld"><label>ملف الموديل (STEP)</label><input type="file" id="upFile" accept=".step,.stp,.STEP,.STP"></div>
+    <div class="fld"><label>اسم الموديل (اللي هيظهر للعامل)</label><input type="text" id="upName" value="${existing ? esc(existing.name) : ''}"></div>
+    ${pwFields(existing)}
+    <div class="err" id="upErr"></div>
+    <div id="upProg" style="display:none"><div class="prog"><i id="upBar"></i></div><ol class="steps" id="upSteps"><li>بيقرا الملف</li><li>بيحوّل الموديل (حوالي دقيقة للتانك الكبير)</li><li>بيضغط الـ STEP الأصلي</li><li>بيرفع</li><li>بيسجّل</li></ol></div>
+    <div class="btns" id="upBtns"><button class="btn" id="upGo">انشر</button><button class="btn ghost" id="upNo">رجوع</button></div>`);
+  const getPw = bindPw(b);
+  b.querySelector('#upFile').onchange = () => { const f = b.querySelector('#upFile').files[0]; if (f && !existing) b.querySelector('#upName').value = f.name.replace(/\.(step|stp)$/i, ''); };
+  b.querySelector('#upNo').onclick = closeDialog;
+  b.querySelector('#upGo').onclick = async () => {
+    const f = b.querySelector('#upFile').files[0], name = b.querySelector('#upName').value.trim(), pw = getPw(), err = b.querySelector('#upErr');
+    if (!f) return err.textContent = 'اختار ملف الـ STEP الأول';
+    if (!/\.(step|stp)$/i.test(f.name)) return err.textContent = 'الملف لازم يبقى STEP (.step أو .stp)';
+    if (!name) return err.textContent = 'اكتب اسم الموديل';
+    if (!pw) return err.textContent = 'اكتب كلمة السر، أو اختار "من غير كلمة سر"';
+    err.textContent = ''; b.querySelector('#upBtns').style.display = 'none'; b.querySelector('#upProg').style.display = 'block';
+    b.querySelectorAll('input').forEach(x => x.disabled = true);
+    try {
+      const m = await publishStep({ file: f, name, pw, id: existing ? existing.id : null, onStep: (i, pct, txt) => {
+        b.querySelectorAll('#upSteps li').forEach((li, k) => { li.className = k < i ? 'ok' : k === i ? 'cur' : ''; });
+        if (txt) b.querySelectorAll('#upSteps li')[i].dataset.t = txt, b.querySelectorAll('#upSteps li')[i].textContent = txt;
+        b.querySelector('#upBar').style.width = pct + '%';
+      } });
+      closeDialog(); loadEngList(); shareDialog(m, true);
+    } catch (e) {
+      if (e.message === 'auth') return;
+      err.textContent = 'ما اتنشرش: ' + (e instanceof Offline ? 'النت فصل' : e.message);
+      b.querySelector('#upBtns').style.display = 'flex'; b.querySelectorAll('input').forEach(x => x.disabled = false);
+    }
+  };
+}
+function convertInWorker(bytes, title, source, onLog) {
+  return new Promise((res, rej) => {
+    const w = new Worker('conv/convert-worker.js');
+    w.onmessage = e => {
+      const d = e.data;
+      if (d.type === 'log') onLog && onLog(d.stage, d.info);
+      else if (d.type === 'done') { w.terminate(); res(d); }
+      else if (d.type === 'error') { w.terminate(); rej(new Error('التحويل: ' + d.message)); }
+    };
+    w.onerror = e => { w.terminate(); rej(new Error('التحويل: ' + (e.message || 'worker'))); };
+    w.postMessage({ bytes, title, source }, [bytes.buffer]);
+  });
+}
+async function uploadBytes(bytes, kind, onPart) {
+  const ids = [], n = Math.max(1, Math.ceil(bytes.length / CHUNK));
+  for (let i = 0; i < n; i++) {
+    const b64 = await bytesToB64(bytes.subarray(i * CHUNK, Math.min(bytes.length, (i + 1) * CHUNK)));
+    let r, tries = 0;
+    for (;;) { try { r = await engCall({ fn: 'up', kind, b64 }, 180000); break; } catch (e) { if (e.message === 'auth' || ++tries >= 3) throw e; await new Promise(z => setTimeout(z, 2000)); } }
+    ids.push(r.fileId); onPart && onPart(i + 1, n);
+  }
+  return ids;
+}
+async function publishStep({ file, name, pw, id, onStep }) {
+  onStep(0, 3);
+  const step = new Uint8Array(await file.arrayBuffer());
+  onStep(1, 8);
+  const t0 = Date.now();
+  const conv = await convertInWorker(step.slice(), name, file.name, (st) => { if (st === 'read') onStep(1, 55, 'بيحوّل الموديل: بيحلل الأوجه والحروف'); });
+  onStep(2, 62, 'بيضغط الـ STEP الأصلي');
+  const stepGz = await gz(step);
+  const total = Math.ceil(conv.glb.length / CHUNK) + Math.ceil(stepGz.length / CHUNK); let done = 0;
+  const tick = () => { done++; onStep(3, 65 + 30 * done / total, 'بيرفع: ' + done + ' من ' + total + ' (' + MB(conv.glb.length + stepGz.length) + ')'); };
+  onStep(3, 65, 'بيرفع');
+  const glbParts = await uploadBytes(conv.glb, 'glb', tick);
+  const stepParts = await uploadBytes(stepGz, 'step', tick);
+  onStep(4, 97);
+  const r = await engCall({ fn: 'publish', id: id || undefined, name, pw, glbParts, glbSize: conv.glb.length, stepParts, stepSize: step.length, stepName: file.name, fmt: conv.fmt, stats: Object.assign({}, conv.stats, { convertMs: Date.now() - t0 }) });
+  onStep(5, 100);
+  return r.model;
+}
+
+// ---------------------------------------------------------------- تعديل الاسم وكلمة السر
+function editDialog(m) {
+  const b = dialog(`<h3>الاسم وكلمة السر</h3>
+    <div class="fld"><label>اسم الموديل</label><input type="text" id="edName" value="${esc(m.name)}"></div>
+    ${pwFields(m)}
+    <p style="font-size:12.5px;color:var(--mute)">لو غيّرت كلمة السر أو حطيت واحدة، الموديل هيتقفل عند كل اللي فاتحينه، وهيطلب منهم الكلمة الجديدة أول ما يفتحوه وفيه نت.</p>
+    <div class="err" id="edErr"></div><div class="btns"><button class="btn" id="edOk">احفظ</button><button class="btn ghost" id="edNo">رجوع</button></div>`);
+  const getPw = bindPw(b);
+  b.querySelector('#edNo').onclick = closeDialog;
+  b.querySelector('#edOk').onclick = async () => {
+    const name = b.querySelector('#edName').value.trim(), pw = getPw();
+    if (!name) return b.querySelector('#edErr').textContent = 'اكتب الاسم';
+    if (!pw) return b.querySelector('#edErr').textContent = 'اكتب كلمة السر الجديدة';
+    try { await engCall({ fn: 'update', id: m.id, name, pw }); closeDialog(); toast('اتحفظ'); loadEngList(); }
+    catch (e) { b.querySelector('#edErr').textContent = 'ما اتحفظش: ' + e.message; }
+  };
+}
+
+// ---------------------------------------------------------------- اللينك والـ QR
+function qrCanvas(text, caption) {
+  const q = qrcode(0, 'M'); q.addData(text); q.make();
+  const n = q.getModuleCount(), cell = Math.floor(560 / (n + 8)), size = cell * (n + 8), capH = caption ? 120 : 0;
+  const c = document.createElement('canvas'); c.width = size; c.height = size + capH;
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.fillStyle = '#000';
+  for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) g.fillRect((k + 4) * cell, (r + 4) * cell, cell, cell);
+  if (caption) {
+    g.direction = 'rtl'; g.textAlign = 'center'; g.fillStyle = '#1c2633';
+    g.font = '600 30px "Readex Pro", sans-serif'; g.fillText(caption.slice(0, 40), size / 2, size + 30);
+    g.font = '22px "Readex Pro", sans-serif'; g.fillStyle = '#5d6b7c'; g.fillText('صوّر الكود علشان تفتح الموديل', size / 2, size + 72);
+  }
+  return c;
+}
+function shareDialog(m, fresh) {
+  const link = BASE + '?p=' + m.id;
+  const b = dialog(`<h3>${fresh ? 'اتنشر ✓' : 'اللينك والـ QR'}</h3><p style="font-size:14px"><bdi>${esc(m.name)}</bdi>${m.hasPw ? '<span class="pill lock">بكلمة سر</span>' : ''}</p>
+    <div class="qrwrap" id="qrBox"></div><div class="linkbox">${esc(link)}</div>
+    <div class="btns"><button class="btn" id="shCopy">انسخ اللينك</button><button class="btn" id="shPng">احفظ صورة الـ QR</button>${navigator.share ? '<button class="btn ghost" id="shShare">ابعت (واتساب...)</button>' : ''}<button class="btn ghost" id="shOpen">افتح</button><button class="btn ghost" id="shNo">قفل</button></div>
+    <p style="font-size:12.5px;color:var(--mute);margin-top:10px">صورة الـ QR تتحط في الـ <bdi>title block</bdi> بتاع اللوحة (<bdi>Insert ← Picture</bdi>). ${m.hasPw ? 'العامل هيحتاج كلمة السر أول مرة بس.' : ''}</p>`);
+  const c = qrCanvas(link, m.name); b.querySelector('#qrBox').appendChild(c);
+  b.querySelector('#shCopy').onclick = async () => { try { await navigator.clipboard.writeText(link); toast('اللينك اتنسخ'); } catch (e) { toast('ما قدرتش أنسخ، انسخه بإيدك'); } };
+  b.querySelector('#shPng').onclick = () => { const a = document.createElement('a'); a.download = 'QR - ' + m.name.replace(/[\\/:*?"<>|]/g, '_') + '.png'; a.href = c.toDataURL('image/png'); a.click(); };
+  if (navigator.share) b.querySelector('#shShare').onclick = () => navigator.share({ title: m.name, text: 'موديل 3D: ' + m.name, url: link }).catch(() => {});
+  b.querySelector('#shOpen').onclick = () => { location.href = link; };
+  b.querySelector('#shNo').onclick = closeDialog;
+}
+
+// ---------------------------------------------------------------- تحديث الموديلات القديمة (بعد أي تغيير في الأساس)
+async function reconvertAll() {
+  const list = (engModels || []).filter(m => m.fmt < APP_FMT && m.stepParts > 0);
+  if (!list.length) return;
+  if (!await confirmBox('تحديث الموديلات', 'هيتعاد تحويل ' + list.length + ' موديل من الـ STEP الأصلي بتاعهم، على نفس اللينكات. خلي الصفحة دي مفتوحة لحد ما يخلص (حوالي دقيقة للموديل الكبير).', 'ابدأ')) return;
+  const b = dialog(`<h3>بيحدّث الموديلات</h3><div class="prog"><i id="rcBar"></i></div><div id="rcTxt" style="font-size:14px"></div><div class="err" id="rcErr"></div><div class="btns" id="rcBtns" style="display:none"><button class="btn" id="rcOk">تمام</button></div>`);
+  const errs = [];
+  for (let k = 0; k < list.length; k++) {
+    const m = list[k], say = t => { b.querySelector('#rcTxt').innerHTML = (k + 1) + ' من ' + list.length + ': <bdi>' + esc(m.name) + '</bdi><br>' + t; };
+    b.querySelector('#rcBar').style.width = (100 * k / list.length) + '%';
+    try {
+      const parts = [];
+      for (let i = 0; i < m.stepParts; i++) { say('بينزّل الـ STEP (' + (i + 1) + '/' + m.stepParts + ')'); const r = await engCall({ fn: 'step', id: m.id, i }, 120000); parts.push(await b64ToBytes(r.b64)); }
+      const step = await gz(joinParts(parts), 'd');
+      say('بيحوّل...');
+      const conv = await convertInWorker(step, m.name, m.stepName || '', null);
+      say('بيرفع...');
+      const glbParts = await uploadBytes(conv.glb, 'glb');
+      await engCall({ fn: 'publish', id: m.id, glbParts, glbSize: conv.glb.length, fmt: conv.fmt, stats: conv.stats });
+    } catch (e) { errs.push(m.name + ': ' + e.message); }
+  }
+  b.querySelector('#rcBar').style.width = '100%';
+  b.querySelector('#rcTxt').textContent = errs.length ? 'خلص، بس فيه موديلات ما اتحدثتش:' : 'كل الموديلات اتحدّثت ✓';
+  b.querySelector('#rcErr').innerHTML = errs.map(esc).join('<br>');
+  b.querySelector('#rcBtns').style.display = 'flex'; b.querySelector('#rcOk').onclick = () => { closeDialog(); loadEngList(); };
+}
+
+// ================================================================ القطع
+const parts = [], groups = [], bodyMeshes = [];
+const modelBox = new THREE.Box3(); let modelSize = 1;
+
+function setupModel(gltf) {
+  const root = gltf.scene;
+  scene.add(root);
+  let asm = root;
+  while (asm.children.length === 1 && !asm.children[0].isMesh && !asm.children[0].userData.body) asm = asm.children[0];
+  const title = modelTitle || gltf.parser.json.scenes?.[0]?.extras?.title || 'موديل';
+  $('title').innerHTML = '<bdi>' + esc(title) + '</bdi>';
+  document.title = title + ' - عارض Middle East';
+  // three.js بيغيّر الأسامي (بيشيل النقط والمسافات)، فناخد الاسم الأصلي من الملف
+  const jsonNodes = gltf.parser.json.nodes || [];
+  const realName = o => { const a = gltf.parser.associations.get(o); return (a && a.nodes !== undefined && jsonNodes[a.nodes].name) || o.name; };
+  for (const node of asm.children) {
+    const nm = realName(node);
+    const p = { name: nm || 'قطعة', node, meshes: [], lines: [], visible: true, water: /water/i.test(nm) };
+    node.traverse(o => {
+      if (o.isMesh) { o.userData.part = p; p.meshes.push(o); bodyMeshes.push(o); }
+      else if (o.isLineSegments || o.isLine) { o.userData.part = p; p.lines.push(o); }
+    });
+    if (!p.meshes.length) continue;
+    parts.push(p);
+    let g = groups.find(x => x.name === p.name);
+    if (!g) groups.push(g = { name: p.name, parts: [] });
+    g.parts.push(p); p.group = g;
+  }
+  parts.forEach(p => { paint(p); if (p.water) setVisible(p, false); });
+  root.updateMatrixWorld(true);
+  modelBox.setFromObject(root);
+  modelSize = modelBox.getSize(new THREE.Vector3()).length();
+  camera.near = modelSize / 3000; camera.far = modelSize * 20; camera.updateProjectionMatrix();
+  $('sub').innerHTML = parts.length + ' قطعة · ' + dims(modelBox.getSize(new THREE.Vector3()));
+  buildPartsList();
+  setView('iso');
+}
+
+let selected = null, fadeOthers = false;
+function paint(p) {
+  const isSel = selected && selected.group === p.group;
+  const faded = fadeOthers && selected && !isSel;
+  const mat = p.water ? M.water : isSel ? M.sel : faded ? M.fade : M.body;
+  p.meshes.forEach(m => m.material = mat);
+  p.lines.forEach(l => { l.material = faded ? M.edgeFade : M.edge; l.visible = p.visible && !p.water; });
+  req();
+}
+function setVisible(p, v) { p.visible = v; p.node.visible = v; p.lines.forEach(l => l.visible = v && !p.water); req(); scheduleContours(); }
+function partBox(list) { const b = new THREE.Box3(); list.forEach(p => b.expandByObject(p.node)); return b; }
+function splitName(n) { const i = n.lastIndexOf('_'); return i > 0 ? [n.slice(0, i), n.slice(i + 1)] : [n, '']; }
+
+function select(p) {
+  selected = p; fadeOthers = false; parts.forEach(paint);
+  if (!p) { $('card').classList.remove('show'); return; }
+  const g = p.group, s = partBox([p]).getSize(new THREE.Vector3());
+  const [base, cfg] = splitName(g.name);
+  $('cardName').innerHTML = '<bdi>' + esc(base) + '</bdi>';
+  $('cardMeta').innerHTML = (cfg ? '<bdi>' + esc(cfg) + '</bdi> · ' : '') + 'العدد: ' + g.parts.length + ' · المقاس الخارجي: ' + dims(s);
+  $('cFade').textContent = 'شفّف الباقي';
+  $('card').classList.add('show');
+}
+$('cardX').onclick = () => select(null);
+$('cZoom').onclick = () => selected && frame(partBox(selected.group.parts));
+$('cAlone').onclick = () => { if (!selected) return; parts.forEach(p => setVisible(p, p.group === selected.group)); buildPartsList(); frame(partBox(selected.group.parts)); };
+$('cHide').onclick = () => { if (!selected) return; selected.group.parts.forEach(p => setVisible(p, false)); select(null); buildPartsList(); };
+$('cFade').onclick = () => { fadeOthers = !fadeOthers; parts.forEach(paint); $('cFade').textContent = fadeOthers ? 'رجّع الباقي' : 'شفّف الباقي'; };
+
+const eyeSvg = '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+function buildPartsList() {
+  $('partsCount').textContent = '(' + parts.length + ')';
+  $('partsList').innerHTML = groups.map((g, i) => {
+    const [base, cfg] = splitName(g.name); const vis = g.parts.some(p => p.visible);
+    return `<div class="p"><button class="eye ${vis ? '' : 'off'}" data-eye="${i}" aria-label="إظهار/إخفاء">${eyeSvg}</button>` +
+      `<div class="n" data-sel="${i}"><bdi>${esc(base)}</bdi>${cfg ? '<small><bdi>' + esc(cfg) + '</bdi></small>' : ''}</div>` +
+      (g.parts.length > 1 ? `<span class="c">×${g.parts.length}</span>` : '') + '</div>';
+  }).join('');
+}
+$('partsList').onclick = e => {
+  const eye = e.target.closest('[data-eye]'), sel = e.target.closest('[data-sel]');
+  if (eye) { const g = groups[+eye.dataset.eye]; const v = !g.parts.some(p => p.visible); g.parts.forEach(p => setVisible(p, v)); buildPartsList(); }
+  else if (sel) { const g = groups[+sel.dataset.sel]; g.parts.forEach(p => setVisible(p, true)); buildPartsList(); select(g.parts[0]); openSheet(null); frame(partBox(g.parts)); }
+};
+
+// ================================================================ الكاميرا
+function frame(box, dir) {
+  const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2 || 1;
+  const d = dir || camera.position.clone().sub(controls.target).normalize();
+  const dist = r / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.05;
+  controls.target.copy(c); camera.position.copy(c).addScaledVector(d, dist); camera.up.set(0, 1, 0);
+  controls.update(); req();
+}
+const VIEWS = { iso: [1, 0.8, 1.3], front: [0, 0, 1], side: [1, 0, 0], top: [0, 1, 0.0001], bottom: [0, -1, 0.0001] };
+function setView(v) { frame(modelBox, new THREE.Vector3(...VIEWS[v]).normalize()); }
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
+$('showAll').onclick = () => { parts.forEach(p => setVisible(p, !p.water)); select(null); buildPartsList(); setView('iso'); };
+
+// ================================================================ السكشن
+// القطع = مستوى: d·p = s. الجزء اللي بيفضل: d·p ≤ s (أو العكس لو مقلوب).
+// cut بيفضل محفوظ لما نشيل القطع مؤقتاً (من غير قطع)، وبيتمسح بس مع "احذف القطع".
+let cut = null;          // { d: Vector3, s, kind: 'axis'|'line', axis, flip }
+let cutActive = false;
+const AX = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) };
+function cutRange(d) {
+  let lo = Infinity, hi = -Infinity; const b = modelBox;
+  for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) { const v = d.x * x + d.y * y + d.z * z; lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  return [lo, hi];
+}
+function applyCut() {
+  const on = !!cut && cutActive;
+  clipping.length = 0; if (on) clipping.push(clipPlane);
+  if (on) { if (cut.flip) clipPlane.set(cut.d.clone(), -cut.s); else clipPlane.set(cut.d.clone().negate(), cut.s); }
+  if (cutOn.value !== (on ? 1 : 0)) { cutOn.value = on ? 1 : 0; Object.values(M).forEach(m => m.needsUpdate = true); }
+  syncSectionUI(); scheduleContours(); req();
+}
+function syncSectionUI() {
+  const has = !!cut;
+  document.querySelectorAll('[data-axis]').forEach(b => b.classList.toggle('on', has && cut.kind === 'axis' && cut.axis === b.dataset.axis));
+  $('secDraw').classList.toggle('on', has && cut.kind === 'line');
+  $('secFlip').classList.toggle('on', has && cut.flip);
+  const tg = $('secToggle');
+  tg.classList.toggle('dis', !has); $('secDel').classList.toggle('dis', !has);
+  tg.textContent = has && !cutActive ? 'رجّع القطع' : 'من غير قطع';
+  tg.classList.toggle('on', has && !cutActive);
+  if (!has) { $('secVal').textContent = 'اختار اتجاه القطع، أو ارسم خط على الموديل.'; $('secNum').value = ''; return; }
+  const [lo, hi] = cutRange(cut.d);
+  $('secSlider').value = Math.round((cut.s - lo) / (hi - lo) * 10000);
+  if (document.activeElement !== $('secNum')) $('secNum').value = (Math.round((cut.s - lo) * 10) / 10).toString();
+  const from = cut.kind === 'axis' && cut.axis === 'y' ? 'من تحت' : 'من الطرف';
+  $('secVal').innerHTML = (cutActive ? '' : '<b style="color:var(--cut)">القطع متشال دلوقتي. </b>') +
+    'مكان القطع: <b><bdi dir="ltr">' + fmt(cut.s - lo) + ' mm</bdi></b> ' + from + ' (من <bdi dir="ltr">' + fmt(hi - lo) + '</bdi>)' +
+    (cut.kind === 'line' ? ' · خط مرسوم' : '');
+}
+function newAxisCut(a) {
+  const d = AX[a].clone(); const [lo, hi] = cutRange(d);
+  const s = cut && cut.kind === 'axis' && cut.axis === a ? cut.s : (lo + hi) / 2;
+  cut = { d, s, kind: 'axis', axis: a, flip: cut ? cut.flip : false }; cutActive = true; applyCut(); flashPlane();
+}
+function setCutPos(s) {
+  if (!cut) newAxisCut('y');
+  const [lo, hi] = cutRange(cut.d); cut.s = Math.min(hi, Math.max(lo, s)); cutActive = true; applyCut(); flashPlane();
+}
+document.querySelectorAll('[data-axis]').forEach(b => b.onclick = () => newAxisCut(b.dataset.axis));
+$('secSlider').oninput = () => { if (!cut) newAxisCut('y'); const [lo, hi] = cutRange(cut.d); setCutPos(lo + (hi - lo) * $('secSlider').value / 10000); };
+document.querySelectorAll('[data-step]').forEach(b => b.onclick = () => { if (!cut) newAxisCut('y'); setCutPos(cut.s + (+b.dataset.step)); });
+$('secNum').onchange = () => { if (!cut) newAxisCut('y'); const [lo] = cutRange(cut.d); const v = parseFloat($('secNum').value); if (isFinite(v)) setCutPos(lo + v); $('secNum').blur(); };
+$('secFlip').onclick = () => { if (!cut) return; cut.flip = !cut.flip; cutActive = true; applyCut(); };
+$('secToggle').onclick = () => { if (!cut) return; cutActive = !cutActive; applyCut(); };
+$('secDel').onclick = () => { cut = null; cutActive = false; applyCut(); };
+
+// شكل المستوى بيظهر ثانية لما القطع يتحرك
+const planeVis = new THREE.Group(); planeVis.visible = false; scene.add(planeVis);
+let planeTimer = 0;
+function flashPlane() {
+  if (!cut) return;
+  planeVis.clear();
+  const size = modelSize * 0.8, c = modelBox.getCenter(new THREE.Vector3());
+  const pos = c.clone().addScaledVector(cut.d, cut.s - cut.d.dot(c));
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), cut.d);
+  const pg = new THREE.PlaneGeometry(size, size);
+  const m = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ color: 0xd9542e, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }));
+  const l = new THREE.LineSegments(new THREE.EdgesGeometry(pg), new THREE.LineBasicMaterial({ color: 0xd9542e }));
+  [m, l].forEach(o => { o.quaternion.copy(q); o.position.copy(pos); planeVis.add(o); });
+  planeVis.visible = true; clearTimeout(planeTimer); planeTimer = setTimeout(() => { planeVis.visible = false; req(); }, 1300); req();
+}
+
+// ارسم خط القطع: المستوى اللي بيعدي على الكاميرا وعلى الخط اللي اترسم (يعني عمودي على الشاشة)
+let drawStart = null;
+$('secDraw').onclick = () => { $('draw').classList.add('on'); hint('ارسم خط بصباعك على الموديل. التانك هيتقطع على الخط ده'); };
+const dl = $('drawLine');
+$('draw').addEventListener('pointerdown', e => { const r = $('draw').getBoundingClientRect(); drawStart = [e.clientX - r.left, e.clientY - r.top]; dl.setAttribute('x1', drawStart[0]); dl.setAttribute('y1', drawStart[1]); dl.setAttribute('x2', drawStart[0]); dl.setAttribute('y2', drawStart[1]); $('draw').setPointerCapture(e.pointerId); });
+const drawEnd = e => { const r = $('draw').getBoundingClientRect(); let x = e.clientX - r.left, y = e.clientY - r.top;
+  // لو الخط قريب من أفقي أو رأسي على الشاشة (أقل من 4 درجات) بيتعدل لوحده
+  const a = Math.atan2(y - drawStart[1], x - drawStart[0]) * 180 / Math.PI, m = ((a % 90) + 90) % 90;
+  if (m < 4 || m > 86) { if (Math.abs(x - drawStart[0]) > Math.abs(y - drawStart[1])) y = drawStart[1]; else x = drawStart[0]; }
+  return [x, y]; };
+$('draw').addEventListener('pointermove', e => { if (!drawStart) return; const [x, y] = drawEnd(e); dl.setAttribute('x2', x); dl.setAttribute('y2', y); });
+$('draw').addEventListener('pointerup', e => {
+  if (!drawStart) return; const [x, y] = drawEnd(e), s0 = drawStart; drawStart = null;
+  $('draw').classList.remove('on'); dl.setAttribute('x2', dl.getAttribute('x1')); dl.setAttribute('y2', dl.getAttribute('y1')); hint('');
+  if (Math.hypot(x - s0[0], y - s0[1]) < 25) return;
+  const r1 = rayAt(s0[0], s0[1]).direction.clone(), r2 = rayAt(x, y).direction.clone();
+  let d = new THREE.Vector3().crossVectors(r1, r2).normalize(), s = d.dot(camera.position);
+  const c = modelBox.getCenter(new THREE.Vector3()); if (d.dot(c) > s) { d.negate(); s = -s; }
+  cut = { d, s, kind: 'line', flip: false }; cutActive = true; applyCut(); flashPlane();
+});
+const keep = pt => !(cut && cutActive) || clipPlane.distanceToPoint(pt) >= -1e-6;
+
+// ================================================================ كاش الإحداثيات + بيانات القياس لكل body
+function cacheOf(mesh) {
+  if (mesh.userData.mc) return mesh.userData.mc;
+  const g = mesh.geometry, pos = g.attributes.position, mw = mesh.matrixWorld, n = pos.count, v = new THREE.Vector3();
+  const W = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(mw); W[3 * i] = v.x; W[3 * i + 1] = v.y; W[3 * i + 2] = v.z; }
+  const holder = mesh.parent && mesh.parent.userData.f ? mesh.parent : mesh;
+  const meta = holder.userData;
+  const lines = holder === mesh.parent ? mesh.parent.children.find(o => o.isLineSegments) : null;
+  let S = new Float32Array(0), SE = new Int32Array(0);
+  if (lines) {
+    const lg = lines.geometry, lp = lg.attributes.position, le = lg.attributes._edgeid, lw = lines.matrixWorld;
+    const ix = lg.index ? lg.index.array : null, cnt = ix ? ix.length : lp.count;
+    S = new Float32Array(cnt * 3); SE = new Int32Array(cnt / 2);
+    for (let k = 0; k < cnt; k++) { const i = ix ? ix[k] : k; v.fromBufferAttribute(lp, i).applyMatrix4(lw); S[3 * k] = v.x; S[3 * k + 1] = v.y; S[3 * k + 2] = v.z; if (k % 2 === 0) SE[k / 2] = le ? Math.round(le.getX(i)) : -1; }
+  }
+  if (!g.boundingSphere) g.computeBoundingSphere();
+  const sphere = g.boundingSphere.clone().applyMatrix4(mw);
+  return mesh.userData.mc = { mesh, W, fid: g.attributes._faceid, idx: g.index.array, meta, S, SE, Vt: Float32Array.from(meta.v || []), sphere };
+}
+
+// ================================================================ خطوط القطع (الكونتور) — بتترسم وبتتقاس
+const contourObj = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x5a1d0c }));
+contourObj.renderOrder = 2; scene.add(contourObj);
+let contours = [];      // { mc, face, segs: Float32Array, ent }
+let contourTimer = 0;
+function scheduleContours() { clearTimeout(contourTimer); contourTimer = setTimeout(computeContours, 120); }
+function computeContours() {
+  contours = [];
+  const all = [];
+  if (cut && cutActive) {
+    const d = cut.d, s = cut.s;
+    for (const mesh of bodyMeshes) {
+      const p = mesh.userData.part; if (!p.visible || p.water) continue;
+      const g = mesh.geometry; if (!g.boundingSphere) g.computeBoundingSphere();
+      const sph = g.boundingSphere.clone().applyMatrix4(mesh.matrixWorld);
+      if (Math.abs(d.dot(sph.center) - s) > sph.radius) continue;
+      const mc = cacheOf(mesh), W = mc.W, idx = mc.idx, n = W.length / 3, dv = new Float32Array(n);
+      for (let i = 0; i < n; i++) dv[i] = d.x * W[3 * i] + d.y * W[3 * i + 1] + d.z * W[3 * i + 2] - s;
+      const byFace = new Map();
+      const cutPt = (i, j, out) => { if (i > j) { const t = i; i = j; j = t; } const t = dv[i] / (dv[i] - dv[j]); out.push(W[3 * i] + (W[3 * j] - W[3 * i]) * t, W[3 * i + 1] + (W[3 * j + 1] - W[3 * i + 1]) * t, W[3 * i + 2] + (W[3 * j + 2] - W[3 * i + 2]) * t); };
+      for (let t = 0; t < idx.length; t += 3) {
+        const a = idx[t], b = idx[t + 1], c = idx[t + 2];
+        const sa = dv[a] > 0, sb = dv[b] > 0, sc = dv[c] > 0;
+        if (sa === sb && sb === sc) continue;
+        const f = mc.fid.getX(a); let arr = byFace.get(f); if (!arr) byFace.set(f, arr = []);
+        if (sa !== sb) cutPt(a, b, arr); if (sb !== sc) cutPt(b, c, arr); if (sc !== sa) cutPt(c, a, arr);
+      }
+      for (const [f, arr] of byFace) { const segs = new Float32Array(arr); all.push(segs); contours.push({ mc, face: f, segs, ent: null }); }
+    }
+  }
+  let n = 0; all.forEach(a => n += a.length);
+  const buf = new Float32Array(n); let o = 0; all.forEach(a => { buf.set(a, o); o += a.length; });
+  contourObj.geometry.dispose(); contourObj.geometry = new THREE.BufferGeometry();
+  contourObj.geometry.setAttribute('position', new THREE.BufferAttribute(buf, 3));
+  req();
+}
+// الكونتور بيتحوّل لشكل مضبوط من بيانات الوش: مستوي → خط، اسطوانة عمودية على القطع → دايرة
+function contourEnt(C, pick) {
+  if (C.ent) return Object.assign({}, C.ent, { pick });
+  const f = C.mc.meta.f?.[C.face] || [0], d = cut.d, s = cut.s; let e;
+  const pts = []; for (let i = 0; i < C.segs.length; i += 3) pts.push(V3(C.segs, i));
+  if (f[0] === 1) {
+    const n = V3(f, 1), p0 = V3(f, 4), dir = new THREE.Vector3().crossVectors(n, d);
+    if (dir.length() > 1e-6) {
+      dir.normalize();
+      // نقطة على خط تقاطع المستويين
+      const n1 = n, n2 = d, c1 = n1.dot(p0), c2 = s, k = n1.dot(n2), den = 1 - k * k;
+      const base = n1.clone().multiplyScalar((c1 - c2 * k) / den).add(n2.clone().multiplyScalar((c2 - c1 * k) / den));
+      let lo = Infinity, hi = -Infinity; pts.forEach(p => { const t = p.clone().sub(base).dot(dir); lo = Math.min(lo, t); hi = Math.max(hi, t); });
+      const a = base.clone().addScaledVector(dir, lo), b = base.clone().addScaledVector(dir, hi);
+      e = { kind: 'line', a, b, dir, len: hi - lo, exact: true };
+    }
+  } else if (f[0] === 2) {
+    const ax = V3(f, 1), c0 = V3(f, 4), r = f[7], k = ax.dot(d);
+    if (Math.abs(k) > 0.99999) {
+      const c = c0.clone().addScaledVector(ax, (s - d.dot(c0)) / k);
+      e = { kind: 'circle', c, n: ax.clone(), r, closed: true, exact: true };
+    } else if (Math.abs(k) < 1e-4) {
+      let lo = Infinity, hi = -Infinity; const ref = pts[0];
+      pts.forEach(p => { const t = p.clone().sub(c0).dot(ax); lo = Math.min(lo, t); hi = Math.max(hi, t); });
+      const off = ref.clone().sub(c0); off.addScaledVector(ax, -off.dot(ax));
+      e = { kind: 'line', a: c0.clone().add(off).addScaledVector(ax, lo), b: c0.clone().add(off).addScaledVector(ax, hi), dir: ax.clone(), len: hi - lo, exact: false };
+    }
+  }
+  if (!e) { let L = 0; for (let i = 0; i + 1 < pts.length; i += 2) L += pts[i].distanceTo(pts[i + 1]); e = { kind: 'curve', len: L, exact: false }; }
+  e.cut = true; e.hl = { segs: C.segs }; C.ent = e;
+  return Object.assign({}, e, { pick });
+}
+
+// ================================================================ تحويل بيانات الحرف والوش لـ "كيان" نقيسه
+function edgeEnt(mc, id, pick) {
+  const e = mc.meta.e?.[id] || [0, 0]; let o;
+  if (e[0] === 1) { const a = V3(e, 1), b = V3(e, 4); o = { kind: 'line', a, b, dir: b.clone().sub(a).normalize(), len: a.distanceTo(b), exact: true }; }
+  else if (e[0] === 2 || e[0] === 3) o = { kind: 'circle', c: V3(e, 1), n: V3(e, 4).normalize(), r: e[7], closed: e[0] === 2, deg: e[8], exact: true };
+  else o = { kind: 'curve', len: e[1], exact: false };
+  o.pick = pick; o.hl = { mc, edge: id }; return o;
+}
+function faceEnt(mc, fid, pick) {
+  const f = mc.meta.f?.[fid] || [0]; let o;
+  if (f[0] === 1) o = { kind: 'plane', n: V3(f, 1).normalize(), p: V3(f, 4), exact: true };
+  else if (f[0] === 2) o = { kind: 'cyl', a: V3(f, 1).normalize(), c: V3(f, 4), r: f[7], len: f[9] - f[8], outer: f[10] > 0, exact: true };
+  else o = { kind: 'surface', exact: false };
+  o.pick = pick; o.hl = { mc, face: fid }; return o;
+}
+function entLabel(e) {
+  const pre = e.cut ? 'على خط القطع: ' : '';
+  switch (e.kind) {
+    case 'point': return 'نقطة ' + ({ vertex: '(ركن)', edge: 'على حرف', surface: 'على سطح', cut: 'على خط القطع' }[e.sub] || '');
+    case 'line': return pre + 'خط مستقيم · L ' + fmtL(e.len);
+    case 'circle': return pre + (e.closed ? 'دايرة · Ø ' + fmtL(2 * e.r) : 'قوس · Ø ' + fmtL(2 * e.r));
+    case 'curve': return pre + 'حرف منحني';
+    case 'plane': return 'سطح مستوي';
+    case 'cyl': return 'سطح اسطواني ' + (e.outer ? 'من بره' : 'من جوه') + ' · Ø ' + fmtL(2 * e.r);
+    default: return 'سطح منحني';
+  }
+}
+
+// ================================================================ البحث تحت المؤشر
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function rayAt(x, y) { ndc.set(x / VW * 2 - 1, -y / VH * 2 + 1); ray.setFromCamera(ndc, camera); return ray.ray; }
+function visibleBodies() { return bodyMeshes.filter(m => m.userData.part.visible && m.material !== M.fade && !m.userData.part.water); }
+function hitAt(x, y) { rayAt(x, y); return ray.intersectObjects(visibleBodies(), false).find(h => keep(h.point)) || null; }
+function pickClient(cx, cy) { const r = renderer.domElement.getBoundingClientRect(); return hitAt(cx - r.left, cy - r.top); }
+
+const VP = new THREE.Matrix4();
+function prepProj() { camera.updateMatrixWorld(); VP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); }
+function proj(x, y, z, out) {
+  const e = VP.elements, w = e[3] * x + e[7] * y + e[11] * z + e[15]; if (w <= 1e-9) return false;
+  out[0] = ((e[0] * x + e[4] * y + e[8] * z + e[12]) / w + 1) * 0.5 * VW; out[1] = (1 - (e[1] * x + e[5] * y + e[9] * z + e[13]) / w) * 0.5 * VH; return true;
+}
+const pixW = dist => 2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / VH;
+function segRay(ax, ay, az, bx, by, bz, o, d) { // أقرب نقطة على القطعة للشعاع
+  const ux = bx - ax, uy = by - ay, uz = bz - az, wx = ax - o.x, wy = ay - o.y, wz = az - o.z;
+  const A = ux * ux + uy * uy + uz * uz, B = ux * d.x + uy * d.y + uz * d.z, D = ux * wx + uy * wy + uz * wz, E = d.x * wx + d.y * wy + d.z * wz;
+  const den = A - B * B; let s = den > 1e-12 ? (B * E - D) / den : 0; s = Math.max(0, Math.min(1, s));
+  return new THREE.Vector3(ax + ux * s, ay + uy * s, az + uz * s);
+}
+function segDist2D(px, py, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy; let t = L > 0 ? ((px - a[0]) * dx + (py - a[1]) * dy) / L : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(a[0] + dx * t - px, a[1] + dy * t - py); }
+
+let snapMode = 'auto';
+function probe(x, y) {
+  prepProj();
+  const r = rayAt(x, y), o = r.origin.clone(), dir = r.direction.clone();
+  const hit = ray.intersectObjects(visibleBodies(), false).find(h => keep(h.point)) || null;
+  const hitT = hit ? hit.distance : Infinity;
+  const occTol = hit ? Math.max(1, 10 * pixW(hitT)) : 0;
+  const visible = p => keep(p) && p.clone().sub(o).dot(dir) <= hitT + occTol;
+  const tolV = snapMode === 'point' ? 16 : 10, tolE = snapMode === 'edge' ? 26 : 12;
+  const A = [0, 0], B = [0, 0];
+  let bestV = null, bestE = null;
+  for (const mesh of visibleBodies()) {
+    const mc = cacheOf(mesh), sp = mc.sphere, dc = sp.center.distanceTo(o);
+    if (r.distanceSqToPoint(sp.center) > (sp.radius + 30 * pixW(dc)) ** 2) continue;
+    const Vt = mc.Vt;
+    for (let i = 0; i < Vt.length; i += 3) {
+      if (!proj(Vt[i], Vt[i + 1], Vt[i + 2], A)) continue;
+      const dd = Math.hypot(A[0] - x, A[1] - y); if (dd > tolV || (bestV && dd >= bestV.dd)) continue;
+      const p = new THREE.Vector3(Vt[i], Vt[i + 1], Vt[i + 2]); if (!visible(p)) continue;
+      bestV = { dd, p, mc };
+    }
+    const S = mc.S;
+    for (let k = 0; k < S.length; k += 6) {
+      if (!proj(S[k], S[k + 1], S[k + 2], A) || !proj(S[k + 3], S[k + 4], S[k + 5], B)) continue;
+      const dd = segDist2D(x, y, A, B); if (dd > tolE || (bestE && dd >= bestE.dd)) continue;
+      const p = segRay(S[k], S[k + 1], S[k + 2], S[k + 3], S[k + 4], S[k + 5], o, dir); if (!visible(p)) continue;
+      bestE = { dd, p, mc, id: mc.SE[k / 6] };
+    }
+  }
+  for (let ci = 0; ci < contours.length; ci++) {
+    const S = contours[ci].segs;
+    for (let k = 0; k < S.length; k += 6) {
+      if (!proj(S[k], S[k + 1], S[k + 2], A) || !proj(S[k + 3], S[k + 4], S[k + 5], B)) continue;
+      const dd = segDist2D(x, y, A, B); if (dd > tolE || (bestE && dd >= bestE.dd)) continue;
+      const p = segRay(S[k], S[k + 1], S[k + 2], S[k + 3], S[k + 4], S[k + 5], o, dir); if (hit && p.clone().sub(o).dot(dir) > hitT + occTol) continue;
+      bestE = { dd, p, contour: contours[ci] };
+    }
+  }
+  const asEdge = () => bestE.contour ? contourEnt(bestE.contour, bestE.p) : edgeEnt(bestE.mc, bestE.id, bestE.p);
+  const asFace = () => faceEnt(cacheOf(hit.object), hit.object.geometry.attributes._faceid.getX(hit.face.a), hit.point.clone());
+  const pt = (p, sub) => ({ kind: 'point', p, pick: p, sub, exact: sub === 'vertex' });
+  if (snapMode === 'auto') {
+    // الركن بيكسب بس لو المؤشر أقرب له من أي حرف (أو قريب منهم بنفس القدر)
+    if (bestV && (!bestE || bestV.dd <= bestE.dd + 3)) return pt(bestV.p, 'vertex');
+    if (bestE) return asEdge();
+    if (hit) return asFace();
+  } else if (snapMode === 'point') {
+    if (bestV) return pt(bestV.p, 'vertex');
+    if (bestE) return pt(bestE.p, bestE.contour ? 'cut' : 'edge');
+    if (hit) return pt(hit.point.clone(), 'surface');
+  } else if (snapMode === 'edge') { if (bestE) return asEdge(); }
+  else if (snapMode === 'face') { if (hit) return asFace(); }
+  return null;
+}
+
+// ================================================================ الرسم المميز (hover / selected)
+const hovGroup = new THREE.Group(), selGroup = new THREE.Group();
+scene.add(hovGroup, selGroup);
+function clearGroup(g) { g.traverse(o => { if (o.geometry && o.geometry !== dotGeo) o.geometry.dispose(); }); g.clear(); }
+const edgeSegsCache = new WeakMap();
+function edgeSegs(mc, id) {
+  let m = edgeSegsCache.get(mc); if (!m) edgeSegsCache.set(mc, m = new Map());
+  if (m.has(id)) return m.get(id);
+  const out = []; for (let k = 0; k < mc.SE.length; k++) if (mc.SE[k] === id) for (let j = 0; j < 6; j++) out.push(mc.S[6 * k + j]);
+  const a = new Float32Array(out); m.set(id, a); return a;
+}
+function faceTris(mc, fid) {
+  const out = [], W = mc.W, idx = mc.idx;
+  for (let t = 0; t < idx.length; t += 3) if (mc.fid.getX(idx[t]) === fid) for (let j = 0; j < 3; j++) { const v = idx[t + j]; out.push(W[3 * v], W[3 * v + 1], W[3 * v + 2]); }
+  return new Float32Array(out);
+}
+function fat(arr, mat) { const g = new LineSegmentsGeometry(); g.setPositions(arr); const l = new LineSegments2(g, mat); l.renderOrder = 20; l.frustumCulled = false; return l; }
+function dotAt(p, mat) { const m = new THREE.Mesh(dotGeo, mat); m.position.copy(p); m.renderOrder = 21; m.userData.dot = true; return m; }
+function drawEnt(e, group, hov) {
+  if (!e) return;
+  if (e.kind === 'point') { group.add(dotAt(e.p, hov ? dotHov : dotSel)); return; }
+  const h = e.hl || {};
+  if (h.face !== undefined) {
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(faceTris(h.mc, h.face), 3));
+    const m = new THREE.Mesh(g, hov ? faceHov : faceSel); m.renderOrder = 6; group.add(m);
+  } else if (h.segs || h.edge !== undefined) {
+    group.add(fat(h.segs || edgeSegs(h.mc, h.edge), hov ? FM.hov : FM.sel));
+  }
+}
+
+// ================================================================ المؤشر + يد التحكم + العدسة
+let mode = 'view';
+const cur = { x: 0, y: 0 };
+let hoverEnt = null, lastProbe = 0;
+function placeCursor() {
+  cur.x = Math.max(4, Math.min(VW - 4, cur.x)); cur.y = Math.max(4, Math.min(VH - 4, cur.y));
+  $('cursor').style.left = cur.x + 'px'; $('cursor').style.top = (cur.y + 52) + 'px';
+  // العدسة تروح الناحية التانية لو المؤشر جنبها
+  const loupeRight = cur.x < 150 && cur.y < 150;
+  $('loupe').style.left = loupeRight ? 'auto' : '8px'; $('loupe').style.right = loupeRight ? '8px' : 'auto';
+  hoverDirty = true; needRender = true;
+}
+function updateHover() {
+  hoverEnt = probe(cur.x, cur.y);
+  clearGroup(hovGroup); drawEnt(hoverEnt, hovGroup, true);
+  const L = $('curLbl'); L.textContent = hoverEnt ? entLabel(hoverEnt) : 'مفيش حاجة هنا'; L.classList.toggle('none', !hoverEnt);
+  // الكلام جنب المؤشر من الناحية اللي فيها مكان، ومايخرجش برة الشاشة
+  const w = L.offsetWidth, h = L.offsetHeight;
+  const goLeft = cur.x + 16 + w > VW - 4 && cur.x - 16 - w >= 4;
+  L.style.left = goLeft ? (-16 - w) + 'px' : Math.min(16, VW - 4 - w - cur.x) + 'px'; L.style.right = 'auto';
+  L.style.top = cur.y - 40 < 4 ? '18px' : '-40px';
+  needRender = true;
+}
+// joystick: كل ما تبعد عن النص كل ما المؤشر يجري أسرع. قريب من النص = حركة بطيئة جداً للدقة
+const joy = { on: false, dx: 0, dy: 0 };
+const knob = $('knob');
+function joyMove(e) {
+  const r = $('joy').getBoundingClientRect(), R = r.width / 2 - 8;
+  let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2); const L = Math.hypot(dx, dy);
+  if (L > R) { dx *= R / L; dy *= R / L; }
+  joy.dx = dx / R; joy.dy = dy / R; knob.style.transform = `translate(${dx}px,${dy}px)`;
+}
+$('joy').addEventListener('pointerdown', e => { joy.on = true; $('joy').setPointerCapture(e.pointerId); joyMove(e); });
+$('joy').addEventListener('pointermove', e => { if (joy.on) joyMove(e); });
+const joyEnd = () => { joy.on = false; joy.dx = joy.dy = 0; knob.style.transform = ''; };
+$('joy').addEventListener('pointerup', joyEnd); $('joy').addEventListener('pointercancel', joyEnd);
+let lastT = performance.now();
+function stepJoy(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  if (!joy.on || mode !== 'measure') return;
+  const m = Math.hypot(joy.dx, joy.dy); if (m < 0.04) return;
+  const speed = 6 + 320 * m * m;              // px/s
+  cur.x += joy.dx / m * speed * m * dt * 1.0; cur.y += joy.dy / m * speed * m * dt * 1.0;
+  placeCursor();
+}
+
+// ================================================================ التحديد والحسابات
+let sel = [];
+$('pickBtn').onclick = () => {
+  updateHover();   // اللي تحت المؤشر دلوقتي بالظبط، مش آخر حاجة اترسمت
+  if (!hoverEnt) { flashInfo('مفيش حاجة تحت المؤشر'); return; }
+  if (sel.length >= 2) sel = [];
+  sel.push(hoverEnt); renderSel();
+};
+$('mClear').onclick = () => { sel = []; renderSel(); };
+document.querySelectorAll('[data-snap]').forEach(b => b.onclick = () => { snapMode = b.dataset.snap; document.querySelectorAll('[data-snap]').forEach(x => x.classList.toggle('on', x === b)); hoverDirty = true; });
+let infoTimer = 0;
+function flashInfo(t) { const el = $('selInfo'); const old = el.innerHTML; el.innerHTML = '<span style="color:var(--cut)">' + t + '</span>'; clearTimeout(infoTimer); infoTimer = setTimeout(() => renderSelInfo(), 1500); }
+function renderSelInfo() {
+  const n = ['١', '٢'];
+  $('selInfo').innerHTML = sel.length === 0
+    ? '<span class="muted">حرّك المؤشر بالدايرة اللي على الشمال، أو دوس على الموديل علشان المؤشر يروح هناك. ولما اللي عايزه يتلوّن دوس <b>حدد</b>.</span>'
+    : sel.map((e, i) => '<div class="s">' + n[i] + ': ' + esc(entLabel(e)) + '</div>').join('') + (sel.length === 1 ? '<div class="muted">حدد حاجة تانية علشان تقيس بينهم</div>' : '');
+}
+function renderSel() {
+  clearGroup(selGroup); tags.forEach(t => t.el.remove()); tags = [];
+  sel.forEach(e => drawEnt(e, selGroup, false));
+  renderSelInfo();
+  const R = sel.length === 1 ? single(sel[0]) : sel.length === 2 ? pair(sel[0], sel[1]) : null;
+  const box = $('mRes');
+  if (!R) { box.classList.remove('show'); needRender = true; return; }
+  if (R.seg) { const [a, b] = R.seg; if (a.distanceTo(b) > 1e-6) { selGroup.add(fat([a.x, a.y, a.z, b.x, b.y, b.z], FM.dim)); selGroup.add(dotAt(a, dotSel), dotAt(b, dotSel)); } addTag(a.clone().add(b).multiplyScalar(0.5), R.tag || ''); }
+  box.innerHTML = (R.title ? '<div>' + R.title + '</div>' : '') + (R.big ? '<div class="big"><bdi dir="ltr">' + R.big + '</bdi></div>' : '') +
+    (R.rows || []).map(([k, v]) => '<div class="r"><span>' + k + '</span><b>' + v + '</b></div>').join('') +
+    (R.approx ? '<div class="ap">تقريبي (±0.1 مم) لأنه من نقطة على السطح مش من شكل مضبوط</div>' : '');
+  box.classList.add('show'); needRender = true;
+}
+let tags = [];
+function addTag(pos, text) { if (!text) return; const el = document.createElement('div'); el.className = 'tag'; el.textContent = text; $('tags').appendChild(el); tags.push({ el, pos }); needRender = true; }
+
+const mm = v => fmtL(v) + ' mm';
+const PAR = Math.cos(THREE.MathUtils.degToRad(0.5)), PERP = Math.sin(THREE.MathUtils.degToRad(0.5));
+const angDeg = (u, v) => THREE.MathUtils.radToDeg(Math.acos(Math.min(1, Math.abs(u.dot(v)))));
+const onLine = (p, a, dir) => a.clone().addScaledVector(dir, p.clone().sub(a).dot(dir));
+const onPlane = (p, n, p0) => p.clone().addScaledVector(n, -p.clone().sub(p0).dot(n));
+const axisOf = e => e.kind === 'cyl' ? { a: e.c, dir: e.a } : e.kind === 'line' ? { a: e.a, dir: e.dir } : null;
+function radial(c, n, toward) { const v = toward.clone().sub(c); v.addScaledVector(n, -v.dot(n)); return v.lengthSq() > 1e-12 ? v.normalize() : new THREE.Vector3().crossVectors(n, Math.abs(n.x) < 0.9 ? AX.x : AX.y).normalize(); }
+
+function single(e) {
+  const T = entLabel(e);
+  if (e.kind === 'point') return { title: T, rows: [['الارتفاع من تحت', mm(e.p.y - modelBox.min.y)]] };
+  if (e.kind === 'line') return { title: 'خط مستقيم' + (e.cut ? ' على القطع' : ''), big: 'L ' + mm(e.len), seg: [e.a, e.b], tag: fmtL(e.len), approx: !e.exact };
+  if (e.kind === 'circle') return { title: e.closed ? 'دايرة' : 'قوس (' + fmt(e.deg || 0) + '°)', big: 'Ø ' + mm(2 * e.r), rows: [['نص القطر', 'R ' + mm(e.r)]], seg: null };
+  if (e.kind === 'cyl') return { title: 'سطح اسطواني ' + (e.outer ? 'من بره' : 'من جوه (فتحة)'), big: 'Ø ' + mm(2 * e.r), rows: [['نص القطر', 'R ' + mm(e.r)], ['طول السطح ده', mm(e.len)]] };
+  if (e.kind === 'plane') { const ny = Math.abs(e.n.y); return { title: 'سطح مستوي ' + (ny > 0.9999 ? '(أفقي)' : ny < 1e-4 ? '(رأسي)' : '(مايل ' + fmt(90 - angDeg(e.n, AX.y)) + '°)'), rows: [['الارتفاع من تحت', ny > 0.9999 ? mm(e.p.y - modelBox.min.y) : '—']] }; }
+  if (e.kind === 'curve') return { title: 'حرف منحني', rows: [['الطول', mm(e.len)]] };
+  return { title: 'سطح منحني', rows: [['', 'اختار حرف أو نقطة عليه علشان تقيس']] };
+}
+const RANK = { point: 0, line: 1, circle: 2, plane: 3, cyl: 4, curve: 5, surface: 5 };
+function pair(A, B) {
+  if (RANK[A.kind] > RANK[B.kind]) [A, B] = [B, A];
+  const k = A.kind + '-' + B.kind, ex = A.exact && B.exact;
+  const R = (title, big, rows, seg, tag, approx) => ({ title, big, rows, seg, tag: tag || big, approx: approx ?? !ex });
+  const P = e => e.kind === 'point' ? e.p : e.pick;
+  switch (k) {
+    case 'point-point': { const a = A.p, b = B.p, d = a.distanceTo(b); return R('المسافة بين النقطتين', mm(d), [['فرق رأسي', mm(Math.abs(b.y - a.y))], ['فرق أفقي', mm(Math.hypot(b.x - a.x, b.z - a.z))]], [a, b], fmtL(d)); }
+    case 'point-line': { const q = onLine(A.p, B.a, B.dir); return R('المسافة العمودية من النقطة للخط', mm(A.p.distanceTo(q)), [], [A.p, q]); }
+    case 'point-circle': { const d = A.p.distanceTo(B.c); return R('المسافة من النقطة لمركز ' + (B.closed ? 'الدايرة' : 'القوس'), mm(d), [['Ø', mm(2 * B.r)]], [A.p, B.c]); }
+    case 'point-plane': { const q = onPlane(A.p, B.n, B.p); return R('المسافة العمودية من النقطة للسطح', mm(A.p.distanceTo(q)), [], [A.p, q]); }
+    case 'point-cyl': { const q = onLine(A.p, B.c, B.a), d = A.p.distanceTo(q); return R('المسافة من النقطة لمحور الاسطوانة', mm(d), [['من النقطة لسطحها', mm(Math.abs(d - B.r))], ['Ø الاسطوانة', mm(2 * B.r)]], [A.p, q]); }
+    case 'line-line': {
+      if (Math.abs(A.dir.dot(B.dir)) > PAR) { const m = A.a.clone().add(A.b).multiplyScalar(0.5), q = onLine(m, B.a, B.dir); return R('المسافة بين الخطين (متوازيين)', mm(m.distanceTo(q)), [], [m, q]); }
+      return R('الزاوية بين الخطين', fmt(angDeg(A.dir, B.dir)) + '°', [], null, null, false);
+    }
+    case 'line-circle': { const q = onLine(B.c, A.a, A.dir); return R('المسافة من مركز الدايرة للخط', mm(B.c.distanceTo(q)), [['Ø', mm(2 * B.r)]], [B.c, q]); }
+    case 'line-plane': {
+      if (Math.abs(A.dir.dot(B.n)) < PERP) { const m = A.a.clone().add(A.b).multiplyScalar(0.5), q = onPlane(m, B.n, B.p); return R('المسافة بين الخط والسطح', mm(m.distanceTo(q)), [], [m, q]); }
+      return R('الزاوية بين الخط والسطح', fmt(90 - angDeg(A.dir, B.n)) + '°', [], null, null, false);
+    }
+    case 'line-cyl': {
+      if (Math.abs(A.dir.dot(B.a)) > PAR) { const m = A.a.clone().add(A.b).multiplyScalar(0.5), q = onLine(m, B.c, B.a), d = m.distanceTo(q); return R('المسافة من محور الاسطوانة للخط', mm(d), [['من سطح الاسطوانة للخط', mm(Math.abs(d - B.r))]], [q, m]); }
+      return R('الزاوية بين الخط ومحور الاسطوانة', fmt(angDeg(A.dir, B.a)) + '°', [], null, null, false);
+    }
+    case 'circle-circle': {
+      const dc = A.c.distanceTo(B.c), par = Math.abs(A.n.dot(B.n)) > PAR;
+      if (par && dc < 0.05) { const u = radial(A.c, A.n, A.pick), p1 = A.c.clone().addScaledVector(u, A.r), p2 = A.c.clone().addScaledVector(u, B.r), t = Math.abs(A.r - B.r);
+        return R('التخانة (دايرتين على نفس المركز)', mm(t), [['Ø الكبيرة', mm(2 * Math.max(A.r, B.r))], ['Ø الصغيرة', mm(2 * Math.min(A.r, B.r))]], [p1, p2], fmtL(t)); }
+      const rows = [['Ø الأولى', mm(2 * A.r)], ['Ø التانية', mm(2 * B.r)]];
+      if (par) { const ax = Math.abs(B.c.clone().sub(A.c).dot(A.n)); rows.unshift(['في اتجاه المحور', mm(ax)], ['في المستوى', mm(Math.sqrt(Math.max(0, dc * dc - ax * ax)))]); }
+      return R('المسافة بين المركزين', mm(dc), rows, [A.c, B.c]);
+    }
+    case 'circle-plane': { const q = onPlane(A.c, B.n, B.p); return R('المسافة من مركز الدايرة للسطح', mm(A.c.distanceTo(q)), [['Ø', mm(2 * A.r)]], [A.c, q]); }
+    case 'circle-cyl': {
+      const q = onLine(A.c, B.c, B.a), d = A.c.distanceTo(q);
+      if (d < 0.05 && Math.abs(A.n.dot(B.a)) > PAR) { const u = radial(A.c, A.n, A.pick), p1 = A.c.clone().addScaledVector(u, A.r), p2 = A.c.clone().addScaledVector(u, B.r), t = Math.abs(A.r - B.r);
+        return R('التخانة (على نفس المحور)', mm(t), [['Ø الدايرة', mm(2 * A.r)], ['Ø الاسطوانة', mm(2 * B.r)]], [p1, p2], fmtL(t)); }
+      return R('المسافة من مركز الدايرة لمحور الاسطوانة', mm(d), [['Ø الدايرة', mm(2 * A.r)], ['Ø الاسطوانة', mm(2 * B.r)]], [A.c, q]);
+    }
+    case 'plane-plane': {
+      if (Math.abs(A.n.dot(B.n)) > PAR) { const q = onPlane(A.pick, B.n, B.p); return R('المسافة بين السطحين (متوازيين)', mm(A.pick.distanceTo(q)), [], [A.pick, q]); }
+      return R('الزاوية بين السطحين', fmt(angDeg(A.n, B.n)) + '°', [['الزاوية التانية', fmt(180 - angDeg(A.n, B.n)) + '°']], null, null, false);
+    }
+    case 'plane-cyl': {
+      if (Math.abs(B.a.dot(A.n)) < PERP) { const q = onLine(B.pick, B.c, B.a), p = onPlane(q, A.n, A.p), d = q.distanceTo(p); return R('المسافة من محور الاسطوانة للسطح', mm(d), [['من سطح الاسطوانة للسطح', mm(Math.abs(d - B.r))], ['Ø', mm(2 * B.r)]], [q, p]); }
+      return R('الزاوية بين المحور والسطح', fmt(90 - angDeg(B.a, A.n)) + '°', [['Ø', mm(2 * B.r)]], null, null, false);
+    }
+    case 'cyl-cyl': {
+      if (Math.abs(A.a.dot(B.a)) > PAR) {
+        const q = onLine(A.c, B.c, B.a), dAx = A.c.distanceTo(q);
+        if (dAx < 0.05) { const u = radial(A.c, A.a, A.pick), p0 = onLine(A.pick, A.c, A.a), p1 = p0.clone().addScaledVector(u, A.r), p2 = p0.clone().addScaledVector(u, B.r), t = Math.abs(A.r - B.r);
+          return R('التخانة (اسطوانتين على نفس المحور)', mm(t), [['Ø من بره', mm(2 * Math.max(A.r, B.r))], ['Ø من جوه', mm(2 * Math.min(A.r, B.r))]], [p1, p2], fmtL(t)); }
+        const a0 = onLine(A.pick, A.c, A.a), b0 = onLine(a0, B.c, B.a);
+        const rows = [['Ø الأولى', mm(2 * A.r)], ['Ø التانية', mm(2 * B.r)]]; const gap = dAx - A.r - B.r; if (gap > 0) rows.unshift(['الفاصل بين السطحين', mm(gap)]);
+        return R('المسافة بين المحورين', mm(dAx), rows, [a0, b0]);
+      }
+      return R('الزاوية بين المحورين', fmt(angDeg(A.a, B.a)) + '°', [['Ø الأولى', mm(2 * A.r)], ['Ø التانية', mm(2 * B.r)]], null, null, false);
+    }
+  }
+  const a = P(A), b = P(B), d = a.distanceTo(b);
+  return R('المسافة بين النقطتين اللي اخترتهم', mm(d), [['', 'علشان قياس مضبوط اختار حرف أو سطح مستوي أو اسطواني']], [a, b], fmtL(d), true);
+}
+
+// ================================================================ الضغط على الموديل
+let down = null, lastTap = { t: 0, x: 0, y: 0 };
+renderer.domElement.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || !e.isPrimary) return;
+  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y), dt = performance.now() - down.t; down = null;
+  if (moved > 8 || dt > 450) return;
+  const now = performance.now(), dbl = now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30;
+  lastTap = dbl ? { t: 0, x: 0, y: 0 } : { t: now, x: e.clientX, y: e.clientY };
+  if (dbl) { const hit = pickClient(e.clientX, e.clientY); if (hit) { controls.target.copy(hit.point); controls.update(); req(); } return; }
+  if (mode === 'measure') { const r = renderer.domElement.getBoundingClientRect(); cur.x = e.clientX - r.left; cur.y = e.clientY - r.top; placeCursor(); return; }
+  const hit = pickClient(e.clientX, e.clientY);
+  select(hit ? hit.object.userData.part : null);
+});
+
+// ================================================================ الشيتات والشريط
+function hint(t) { $('hintTxt').textContent = t || ''; }
+function openSheet(id) {
+  document.querySelectorAll('.sheet').forEach(s => s.classList.toggle('open', s.id === id));
+  document.querySelectorAll('#bar button').forEach(b => b.classList.toggle('on', b.dataset.sheet === id));
+  const was = mode; mode = id === 'sMeasure' ? 'measure' : 'view';
+  const m = mode === 'measure';
+  ['cursor', 'loupe'].forEach(k => $(k).style.display = m ? 'block' : 'none');
+  if (m && was !== 'measure') {
+    select(null); hint('');
+    // المؤشر في نص الجزء اللي باين من الشاشة (فوق الشيت)
+    requestAnimationFrame(() => { const sh = $('sMeasure').getBoundingClientRect(), vr = view.getBoundingClientRect(); cur.x = VW / 2; cur.y = Math.max(60, (sh.top - vr.top) / 2); placeCursor(); });
+    renderSel();
+  }
+  if (!m && was === 'measure') { clearGroup(hovGroup); hoverEnt = null; $('mRes').classList.remove('show'); clearGroup(selGroup); tags.forEach(t => t.el.remove()); tags = []; }
+  if (id) $('card').classList.remove('show');
+  if (id !== 'sSection') { $('draw').classList.remove('on'); }
+  needRender = true;
+}
+document.querySelectorAll('#bar button').forEach(b => b.onclick = () => openSheet(b.classList.contains('on') ? null : b.dataset.sheet));
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => openSheet(null));
+
+// ================================================================ الرسم
+const loupeCam = new THREE.PerspectiveCamera();
+const LOUPE = 124, ZOOM = 4;
+function loop(now) {
+  requestAnimationFrame(loop);
+  stepJoy(now);
+  if (mode === 'measure' && hoverDirty && now - lastProbe > 45) { hoverDirty = false; lastProbe = now; updateHover(); }
+  if (!needRender) return; needRender = false;
+  const k = camera.position.distanceTo(controls.target) * 0.0035;
+  [hovGroup, selGroup].forEach(g => g.children.forEach(o => { if (o.userData.dot) o.scale.setScalar(k); }));
+  renderer.setScissorTest(false); renderer.setViewport(0, 0, VW, VH);
+  renderer.render(scene, camera);
+  if (mode === 'measure') {
+    // العدسة: نفس الكاميرا بس مكبّرة 4 مرات حوالين المؤشر
+    loupeCam.copy(camera); const w = LOUPE / ZOOM;
+    loupeCam.setViewOffset(VW, VH, cur.x - w / 2, cur.y - w / 2, w, w); loupeCam.updateProjectionMatrix();
+    const lr = $('loupe').getBoundingClientRect(), vr = view.getBoundingClientRect();
+    const lx = lr.left - vr.left + 3, ly = VH - (lr.top - vr.top + 3) - (LOUPE - 6);
+    renderer.setScissorTest(true); renderer.setScissor(lx, ly, LOUPE - 6, LOUPE - 6); renderer.setViewport(lx, ly, LOUPE - 6, LOUPE - 6);
+    renderer.render(scene, loupeCam);
+    renderer.setScissorTest(false); renderer.setViewport(0, 0, VW, VH);
+  }
+  const v = new THREE.Vector3();
+  tags.forEach(t => { v.copy(t.pos).project(camera); t.el.style.display = v.z < 1 ? '' : 'none'; t.el.style.left = ((v.x + 1) / 2 * VW) + 'px'; t.el.style.top = ((1 - v.y) / 2 * VH + 52) + 'px'; });
+}
+
+// ================================================================ تشغيل
+$('backBtn').onclick = () => { location.href = BASE; };
+(async () => {
+  resize(); requestAnimationFrame(loop);
+  const p = params.get('p'), m = params.get('m');
+  tidyCache();
+  try {
+    if (p) { $('backBtn').style.display = 'block'; await openModel(p); }
+    else if (m) {   // للتجربة على الجهاز: ?m=../models/x.glb
+      $('backBtn').style.display = 'block';
+      const r = await fetch(m, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status);
+      await loadBytes(new Uint8Array(await r.arrayBuffer()), null);
+    } else await showHome();
+  } catch (err) {
+    console.error(err);
+    fail('الموديل ما اتفتحش: ' + (err.message || err));
+  }
+  // التطبيق بيتحدّث لوحده: الصفحة بتتجاب من النت الأول، ولما نسخة جديدة توصل بيعمل reload
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    let had = !!navigator.serviceWorker.controller, reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !reloading) { reloading = true; location.reload(); } had = true; });
+    navigator.serviceWorker.register('sw.js').then(reg => reg.update()).catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

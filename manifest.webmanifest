@@ -1,0 +1,17 @@
+{
+ "name": "عارض الموديلات - Middle East",
+ "short_name": "موديلات ME",
+ "description": "عرض موديلات 3D للعمال: سكشن وقياس ولستة قطع",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#E6EAEF",
+ "theme_color": "#2D5B8C",
+ "lang": "ar",
+ "dir": "rtl",
+ "icons": [
+  { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+  { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+  { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+ ]
+}
