@@ -300,13 +300,16 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.localClippingEnabled = true;
 renderer.setClearColor(0xe6eaef);
 view.appendChild(renderer.domElement);
+// لو الموبايل سحب كارت الشاشة من التطبيق (ذاكرة قليلة / التطبيق في الخلفية)، three بيرجّع كل حاجة لوحده لما يرجع، وإحنا نرسم تاني
+renderer.domElement.addEventListener('webglcontextlost', e => { e.preventDefault(); toast('الموبايل وقّف العرض لحظة، بيرجّعه...'); });
+renderer.domElement.addEventListener('webglcontextrestored', () => { setTimeout(() => { needRender = true; }, 50); });
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, 1, 1, 1e6);
 scene.add(camera);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x8a96a6, 1.6));
 const head = new THREE.DirectionalLight(0xffffff, 1.6); head.position.set(0.4, 0.6, 1); camera.add(head);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = false;
+controls.enableDamping = true; controls.dampingFactor = 0.18;   // اللف بيكمّل بنعومة بعد ما تسيب
 controls.zoomToCursor = true;
 controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
 
@@ -360,7 +363,7 @@ const dotGeo = new THREE.SphereGeometry(1, 14, 10);
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbwz4cUlWcIq3hip0Xhz26-aSf2l46LYcV20-hOJ74VWGTzPpCYSxxx27XyRZybQ6Jc77Q/exec';
 const params = new URLSearchParams(location.search);
 const API = window.ME_API || (location.hostname === 'localhost' && localStorage.getItem('me_api_test')) || (/^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname) ? '/api' : GAS_URL);
-const APP_FMT = 4;             // لازم يساوي FMT في tools/convert-core.mjs
+const APP_FMT = 5;            // لازم يساوي FMT في tools/convert-core.mjs
 const OFFLINE_DAYS = 7;          // الموديل بيفتح من غير نت لحد المدة دي من آخر مرة اتأكدنا من السيرفر
 const CHUNK = 4 * 1024 * 1024;   // حجم الجزء في الرفع والتنزيل (حدود جوجل)
 const BASE = new URL('./', location.href).href;
@@ -463,7 +466,7 @@ async function loadBytes(bytes, entry) {
   if (fmt === 2) toast('الموديل ده معمول قبل قياس الشفة والكون وخطوط التماس. باقي القياس شغال، والمهندس يقدر يحدّثه من صفحته.', 6000);
   else if (fmt < 3) toast('الموديل ده معمول بنسخة قديمة. العرض شغال، بس القياس المضبوط محتاج المهندس يحدّثه.', 6000);
   else { hint('دوس على أي قطعة علشان تعرف اسمها'); setTimeout(() => { if (mode === 'view' && !$('draw').classList.contains('on')) hint(''); }, 5000); }
-  window.__viewer = { THREE, scene, camera, controls, parts, groups, bodyMeshes, probe, pair, single, req, renderer, cur, placeCursor, getSel: () => sel, getHover: () => hoverEnt, contours: () => contours, getCut: () => cut, setCut: (c, a) => { cut = c; cutActive = a; applyCut(); }, computeContours, openSheet, lodBodies, setLOD, cacheOf, faceEnt, isHeavy: () => heavyModel, chunkBodiesList };
+  window.__viewer = { THREE, scene, camera, controls, parts, groups, bodyMeshes, probe, pair, single, req, renderer, cur, placeCursor, getSel: () => sel, getHover: () => hoverEnt, contours: () => contours, getCut: () => cut, setCut: (c, a) => { cut = c; cutActive = a; applyCut(); }, computeContours, openSheet, cacheOf, faceEnt, buildDraw, batches, renderItems, drawRoot };
 }
 
 // ---------------------------------------------------------------- نوافذ (dialogs)
@@ -850,22 +853,32 @@ async function reconvertAll() {
 }
 
 // ================================================================ القطع
-const parts = [], groups = [], bodyMeshes = [], lodBodies = [];
+const parts = [], groups = [], bodyMeshes = [];
+const renderItems = [], geoUses = new Map();   // لكل قطعة: أشكالها (كاملة / مبسطة / حتت / حروف) + مكانها. geoUses = كام نسخة بتستخدم الشكل
 // القطع المكررة (FMT 4): الـ node بتاعها فيه { inst: iid } بس. بيانات القياس بتتحسب من الأصل بالتحويل اللي بينهم (لف + نقل)
 function expandInstances(root) {
   const refs = new Map(); root.traverse(o => { if (o.userData && o.userData.f && o.userData.iid !== undefined) refs.set(o.userData.iid, o); });
   if (!refs.size) return;
-  const T = new THREE.Matrix4(), N3 = new THREE.Matrix3(), v = new THREE.Vector3();
+  const v = new THREE.Vector3();
   root.traverse(o => {
     const k = o.userData && o.userData.inst, R = k !== undefined && refs.get(k); if (!R) return;
-    T.copy(R.matrixWorld).invert().premultiply(o.matrixWorld); N3.setFromMatrix4(T);
-    const P = (a, i) => { v.set(a[i], a[i + 1], a[i + 2]).applyMatrix4(T); return [v.x, v.y, v.z]; };
-    const D = (a, i) => { v.set(a[i], a[i + 1], a[i + 2]).applyMatrix3(N3).normalize(); return [v.x, v.y, v.z]; };
-    const S = R.userData;
-    o.userData.f = S.f.map(f => f[0] === 5 ? [5, ...P(f, 1), ...f.slice(4)] : f[0] >= 1 && f[0] <= 4 ? [f[0], ...D(f, 1), ...P(f, 4), ...f.slice(7)] : f);
-    o.userData.e = S.e.map(e => e[0] === 1 ? [1, ...P(e, 1), ...P(e, 4)] : e[0] === 2 || e[0] === 3 ? [e[0], ...P(e, 1), ...D(e, 4), ...e.slice(7)] : e);
-    const vv = []; for (let i = 0; i < (S.v || []).length; i += 3) vv.push(...P(S.v, i)); o.userData.v = vv;
-    o.userData.tn = S.tn; o.userData.lod = S.lod;
+    const T = new THREE.Matrix4().copy(R.matrixWorld).invert().premultiply(o.matrixWorld), N3 = new THREE.Matrix3().setFromMatrix4(T);
+    const S = R.userData, ud = o.userData;
+    ud.tn = S.tn; ud.lod = S.lod; ud.lod2 = S.lod2;
+    // البيانات بتتحسب للنسخة أول ما حد يحتاجها بس (لمسها أو قاسها)، مش لكل النسخ وقت الفتح. ده بيوفّر ذاكرة كتير في الموديلات الكبيرة
+    let X = null;
+    const expand = () => {
+      if (X) return X;
+      const P = (a, i) => { v.set(a[i], a[i + 1], a[i + 2]).applyMatrix4(T); return [v.x, v.y, v.z]; };
+      const D = (a, i) => { v.set(a[i], a[i + 1], a[i + 2]).applyMatrix3(N3).normalize(); return [v.x, v.y, v.z]; };
+      const vv = []; for (let i = 0; i < (S.v || []).length; i += 3) vv.push(...P(S.v, i));
+      return X = {
+        f: S.f.map(f => f[0] === 5 ? [5, ...P(f, 1), ...f.slice(4)] : f[0] >= 1 && f[0] <= 4 ? [f[0], ...D(f, 1), ...P(f, 4), ...f.slice(7)] : f),
+        e: S.e.map(e => e[0] === 1 ? [1, ...P(e, 1), ...P(e, 4)] : e[0] === 2 || e[0] === 3 ? [e[0], ...P(e, 1), ...D(e, 4), ...e.slice(7)] : e),
+        v: vv,
+      };
+    };
+    for (const key of ['f', 'e', 'v']) Object.defineProperty(ud, key, { get: () => expand()[key], configurable: true });
   });
 }
 const modelBox = new THREE.Box3(); let modelSize = 1;
@@ -885,16 +898,22 @@ function setupModel(gltf) {
   expandInstances(root);
   for (const node of asm.children) {
     const nm = realName(node);
-    const p = { name: nm || 'قطعة', node, meshes: [], lines: [], visible: true, water: /water/i.test(nm) };
+    const p = { name: nm || 'قطعة', node, meshes: [], visible: true, water: /water/i.test(nm), mat: M.body, lmat: M.edge };
+    // الأوبجكتات اللي جاية من الملف كلها مخفية: القطعة الأصلية للّمس والقياس والسكشن، والرسم كله من drawRoot (buildDraw)
     node.traverse(o => {
-      if (o.isMesh && o.material && o.material.name === 'lod') {   // النسخة المبسطة: بتترسم بدل الأصلية لما تبقى بعيدة (setLOD)
-        const main = o.parent.children.find(c => c.isMesh && c !== o && c.material.name !== 'lod');
-        o.visible = false; o.userData.part = p; if (main) { main.userData.lod = o; main.userData.lodErr = o.parent.userData.lod || 1; lodBodies.push(main); }
-      }
-      else if (o.isMesh) { o.userData.part = p; p.meshes.push(o); bodyMeshes.push(o); }
-      else if (o.material && o.material.name === 'tedge') { o.visible = false; }   // خطوط التماس: بتتمسك في القياس بس، مش بتترسم
-      else if (o.isLineSegments || o.isLine) { o.userData.part = p; p.lines.push(o); }
+      if (o.isMesh || o.isLine) o.visible = false;
+      if (o.isMesh && o.material && !/^lod/.test(o.material.name)) { o.userData.part = p; p.meshes.push(o); bodyMeshes.push(o); }
     });
+    for (const m of p.meshes) {
+      const sib = m.parent.children, ud = m.parent.userData;
+      const l1 = sib.find(c => c.isMesh && c.material.name === 'lod'), l2 = sib.find(c => c.isMesh && c.material.name === 'lod2');
+      const ln = sib.find(c => c.isLineSegments && c.material.name !== 'tedge');
+      m.updateMatrixWorld(true);
+      const R = { m, part: p, mw: m.matrixWorld, full: m.geometry, l1: l1 && l1.geometry, e1: ud.lod || 1, l2: l2 && l2.geometry, e2: ud.lod2 || 4,
+        lines: ln && ln.geometry, sph: worldSphere(m), chunks: null, csph: null };
+      m.userData.R = R; renderItems.push(R);
+      for (const g of [R.full, R.l1, R.l2, R.lines]) if (g) geoUses.set(g, (geoUses.get(g) || 0) + 1);
+    }
     if (!p.meshes.length) continue;
     parts.push(p);
     let g = groups.find(x => x.name === p.name);
@@ -909,7 +928,6 @@ function setupModel(gltf) {
   $('sub').innerHTML = parts.length + ' قطعة · ' + dims(modelBox.getSize(new THREE.Vector3()));
   buildPartsList();
   setView('iso');
-  heavyModel = bodyMeshes.reduce((s, m) => s + m.geometry.index.count / 3, 0) > 300000;
   buildBVHLater();
 }
 
@@ -917,12 +935,11 @@ let selected = null, fadeOthers = false;
 function paint(p) {
   const isSel = selected && selected.group === p.group;
   const faded = fadeOthers && selected && !isSel;
-  const mat = p.water ? M.water : isSel ? M.sel : faded ? M.fade : M.body;
-  p.meshes.forEach(m => { m.material = mat; if (m.userData.lod) m.userData.lod.material = mat; (m.userData.chunks || []).forEach(c => { c.f.material = mat; if (c.l) c.l.material = mat; }); });
-  p.lines.forEach(l => { l.material = faded ? M.edgeFade : M.edge; l.visible = p.visible && !p.water; });
+  p.mat = p.water ? M.water : isSel ? M.sel : faded ? M.fade : M.body;
+  p.lmat = p.water ? null : faded ? M.edgeFade : M.edge;
   req();
 }
-function setVisible(p, v) { p.visible = v; p.node.visible = v; p.lines.forEach(l => l.visible = v && !p.water); req(); scheduleContours(); }
+function setVisible(p, v) { p.visible = v; req(); scheduleContours(); }
 function partBox(list) { const b = new THREE.Box3(); list.forEach(p => b.expandByObject(p.node)); return b; }
 function splitName(n) { const i = n.lastIndexOf('_'); return i > 0 ? [n.slice(0, i), n.slice(i + 1)] : [n, '']; }
 
@@ -1101,10 +1118,9 @@ function buildBVHLater() {
 // ================================================================ تقسيم القطع الكبيرة لحتت (للرسم بس)
 // الماسورة الواحدة ممكن تبقى 2.8 متر و44 ألف مثلث: لو حتة صغيرة منها باينة كانت بتترسم كلها، وبالتفاصيل الكاملة لو قريبة.
 // الـ BVH رتّب المثلثات بحيث المتجاورين ورا بعض، فكل ~2000 مثلث ورا بعض = حتة صغيرة متجاورة (كوع، جزء من ماسورة).
-// كل حتة Mesh لوحدها بكورتها، فالشاشة والعدسة بيرسموا الحتت اللي باينة فيهم بس، وكل حتة بتختار التفاصيل (LOD) لوحدها.
+// كل حتة ليها كورتها، فالشاشة والعدسة بيرسموا الحتت اللي باينة فيهم بس، وكل حتة بتختار التفاصيل (LOD) لوحدها (buildDraw).
 // القطعة الأصلية بتفضل زي ما هي (مخفية) للمس والقياس والسكشن. والنسخ المكررة بتشارك نفس الحتت.
 const CHUNK_TRI = 2048, CHUNK_MIN = 6000;
-const chunkBodiesList = [];
 function chunkGeo(base, idxArr) {   // geometry بتشارك الـ attributes، ومعاها index الحتة بس وكورة محسوبة من نقطها هي
   const g = new THREE.BufferGeometry(); g.setAttribute('position', base.attributes.position); if (base.attributes.normal) g.setAttribute('normal', base.attributes.normal);
   g.setIndex(new THREE.BufferAttribute(idxArr, 1));
@@ -1120,10 +1136,10 @@ function chunkBodies(g) {
   const chunks = [];
   for (let c = 0; c < n; c++) chunks.push({ full: chunkGeo(g, new Ctor(idx.subarray(3 * c * CHUNK_TRI, 3 * Math.min(nt, (c + 1) * CHUNK_TRI)))), lod: null });
   // النسخة المبسطة: كل مثلث فيها بيروح للحتة اللي أقرب لمركزه، فالحتة ونسختها المبسطة بيغطّوا نفس المكان وبيتبدّلوا مع بعض
-  const ref = bodyMeshes.find(m => m.geometry === g), L = ref && ref.userData.lod;
-  if (L) {
+  const ref = renderItems.find(R => R.full === g), lg = ref && ref.l1;
+  if (lg) {
     // (أقرب مثلث في القطعة الكاملة بالـ BVH، والحتة بتاعته = رقمه ÷ 2048)
-    const lg = L.geometry, li = lg.index.array, lp = lg.attributes.position, a = new THREE.Vector3(), b = new THREE.Vector3(), cc = new THREE.Vector3(), hit = {};
+    const li = lg.index.array, lp = lg.attributes.position, a = new THREE.Vector3(), b = new THREE.Vector3(), cc = new THREE.Vector3(), hit = {};
     const buckets = chunks.map(() => []);
     for (let t = 0; t < li.length; t += 3) {
       a.fromBufferAttribute(lp, li[t]); b.fromBufferAttribute(lp, li[t + 1]); cc.fromBufferAttribute(lp, li[t + 2]).add(a).add(b).divideScalar(3);
@@ -1133,20 +1149,64 @@ function chunkBodies(g) {
     const LC = li.constructor;
     chunks.forEach((ch, c) => { if (buckets[c].length) ch.lod = chunkGeo(lg, new LC(buckets[c])); });
   }
-  // نعمل Mesh لكل حتة لكل نسخة بتستخدم الشكل ده
-  for (const m of bodyMeshes) {
-    if (m.geometry !== g) continue;
-    const list = chunks.map(ch => {
-      const f = new THREE.Mesh(ch.full, m.material); f.matrix.copy(m.matrix); f.matrixAutoUpdate = false; m.parent.add(f);
-      let l = null; if (ch.lod) { l = new THREE.Mesh(ch.lod, m.material); l.matrix.copy(m.userData.lod ? m.userData.lod.matrix : m.matrix); l.matrixAutoUpdate = false; l.visible = false; m.parent.add(l); }
-      f.raycast = () => {}; if (l) l.raycast = () => {};   // اللمس والقياس من القطعة الأصلية بس
-      f.updateMatrixWorld(true); if (l) l.updateMatrixWorld(true);
-      return { f, l, sph: ch.full.boundingSphere.clone().applyMatrix4(m.matrixWorld) };
-    });
-    m.userData.chunks = list; m.visible = false; if (m.userData.lod) m.userData.lod.visible = false;
-    chunkBodiesList.push(m);
+  // كل النسخ اللي بتستخدم الشكل ده بتاخد نفس الحتت، وكل نسخة بتحسب كور حتتها في مكانها
+  const uses = geoUses.get(g) || 1;
+  chunks.forEach(ch => { geoUses.set(ch.full, uses); if (ch.lod) geoUses.set(ch.lod, uses); });
+  for (const R of renderItems) if (R.full === g) { R.chunks = chunks; R.csph = chunks.map(ch => ch.full.boundingSphere.clone().applyMatrix4(R.mw)); }
+  req();
+}
+
+// ================================================================ الرسم المجمّع (instancing)
+// كل شكل (كامل، مبسط، حتة، حروف) بخامة معيّنة = أمر رسم واحد لكل النسخ اللي باينة منه. فـ 3000 مسمار شبه بعض = أمر رسم واحد.
+// قبل كل رسمة (الشاشة، والعدسة) buildDraw بيختار لكل قطعة:
+//   - باينة في الكاميرا؟ (الكورة جوه الـ frustum). العدسة بتشوف مربع صغير، فبترسم اللي فيه بس.
+//   - أصغر من بكسل؟ ماتترسمش (مش باينة أصلاً).
+//   - التفاصيل: المبسطة جداً (lod2) ← المبسطة (lod1) ← حتت (كل حتة لوحدها) ← الكاملة، حسب إن الفرق يبقى أقل من drawTau بكسل.
+//   - الحروف: لو القطعة أكبر من 3 بكسل.
+// القياس واللمس والسكشن مش بيستخدموا الرسم ده خالص: دايماً من القطعة الأصلية الكاملة والأرقام المضبوطة.
+const drawRoot = new THREE.Group(); scene.add(drawRoot);
+class InstancedLines extends THREE.LineSegments {   // خطوط بالـ instancing (three بيرسم أي object عنده instanceMatrix + isInstancedMesh)
+  constructor(geo, mat, cap) { super(geo, mat); this.isInstancedMesh = true; this.instanceMatrix = new THREE.InstancedBufferAttribute(new Float32Array(cap * 16), 16); this.instanceColor = null; this.morphTexture = null; this.count = 0; }
+}
+const batches = new Map();
+let drawTau = 0.5;
+function pushInst(geo, mat, mw, lines) {
+  const key = geo.id + '|' + mat.id; let b = batches.get(key);
+  if (!b) {
+    const cap = Math.max(1, geoUses.get(geo) || 1);
+    const o = lines ? new InstancedLines(geo, mat, cap) : new THREE.InstancedMesh(geo, mat, cap);
+    o.instanceMatrix.setUsage(THREE.DynamicDrawUsage); o.frustumCulled = false; o.count = 0; if (lines) o.renderOrder = 1;
+    drawRoot.add(o); b = { o, n: 0, cap }; batches.set(key, b);
   }
-  for (let i = lodBodies.length - 1; i >= 0; i--) if (lodBodies[i].geometry === g) lodBodies.splice(i, 1);   // الـ LOD بقى بالحتة
+  if (b.n >= b.cap) {   // احتياطي: لو النسخ زادت عن المتوقع
+    const arr = new Float32Array(b.cap * 2 * 16); arr.set(b.o.instanceMatrix.array); b.cap *= 2;
+    b.o.instanceMatrix = new THREE.InstancedBufferAttribute(arr, 16); b.o.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  }
+  b.o.instanceMatrix.array.set(mw.elements, b.n * 16); b.n++;
+}
+const _fr = new THREE.Frustum(), _pm = new THREE.Matrix4();
+function buildDraw(cam, zoom) {
+  for (const b of batches.values()) b.n = 0;
+  cam.updateMatrixWorld(); _pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); _fr.setFromProjectionMatrix(_pm);
+  const cp = cam.position, kpx = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / VH / zoom;   // مللي لكل بكسل على مسافة 1
+  for (const R of renderItems) {
+    const p = R.part; if (!p.visible) continue;
+    const s = R.sph; if (!_fr.intersectsSphere(s)) continue;
+    const dc = s.center.distanceTo(cp), px = 2 * s.radius / (Math.max(cam.near, dc) * kpx);
+    if (px < 0.6) continue;
+    const near = Math.max(cam.near, dc - s.radius) * kpx, mat = p.mat;
+    if (R.l2 && R.e2 / near < drawTau) pushInst(R.l2, mat, R.mw);
+    else if (R.l1 && R.e1 / near < drawTau) pushInst(R.l1, mat, R.mw);
+    else if (R.chunks) {
+      for (let i = 0; i < R.chunks.length; i++) {
+        const c = R.chunks[i], cs = R.csph[i]; if (!_fr.intersectsSphere(cs)) continue;
+        const cn = Math.max(cam.near, cs.center.distanceTo(cp) - cs.radius) * kpx;
+        pushInst(c.lod && R.e1 / cn < drawTau ? c.lod : c.full, mat, R.mw);
+      }
+    } else pushInst(R.full, mat, R.mw);
+    if (R.lines && p.lmat && px > 3) pushInst(R.lines, p.lmat, R.mw, true);
+  }
+  for (const b of batches.values()) { b.o.count = b.n; b.o.visible = b.n > 0; if (b.n) { b.o.instanceMatrix.clearUpdateRanges(); b.o.instanceMatrix.addUpdateRange(0, b.n * 16); b.o.instanceMatrix.needsUpdate = true; } }
 }
 
 // ================================================================ كاش الإحداثيات + بيانات القياس لكل body
@@ -1156,8 +1216,19 @@ function cacheOf(mesh) {
   // إحداثيات المثلثات في العالم (W) بتتحسب أول ما حد يطلبها بس (تلوين وش، سكشن)، مش مع كل حركة للمؤشر
   let W = null;
   const getW = () => { if (W) return W; W = new Float32Array(n * 3); for (let i = 0; i < n; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(mw); W[3 * i] = v.x; W[3 * i + 1] = v.y; W[3 * i + 2] = v.z; } return W; };
-  const holder = mesh.parent && mesh.parent.userData.f ? mesh.parent : mesh;
+  const holder = mesh.parent && mesh.parent.userData.body ? mesh.parent : mesh;
   const meta = holder.userData;
+  // الحروف والأركان بتتحسب مرة واحدة لكل شكل (في مكان أول نسخة)، وباقي النسخ بتستخدمها بالتحويل T بتاعها (لف + نقل).
+  // في موديل فيه 560 ماسورة متكررة ده بيوفّر حوالي 90 ميجا ذاكرة
+  let E = g.userData.edge, T = null, Ti = null;
+  if (!E) E = g.userData.edge = buildEdgeData(mesh, holder, meta);
+  else { T = new THREE.Matrix4().multiplyMatrices(mw, E.refInv); Ti = T.clone().invert(); }
+  const mc = { mesh, fid: g.attributes._faceid, idx: g.index.array, meta, E, T, Ti, sphere: worldSphere(mesh) };
+  Object.defineProperty(mc, 'W', { get: getW });
+  return mesh.userData.mc = mc;
+}
+function buildEdgeData(mesh, holder, meta) {
+  const v = new THREE.Vector3();
   // الحروف المرسومة + خطوط التماس (المخفية) مع بعض، علشان الاتنين يتمسكوا
   const lines = holder === mesh.parent ? mesh.parent.children.filter(o => o.isLineSegments) : [];
   let tot = 0; lines.forEach(l => { const lg = l.geometry; tot += lg.index ? lg.index.count : lg.attributes.position.count; });
@@ -1184,9 +1255,7 @@ function cacheOf(mesh) {
     for (let q = 3 * k; q < 3 * j; q += 3) for (let a = 0; a < 3; a++) { lo[a] = Math.min(lo[a], Vt[q + a]); hi[a] = Math.max(hi[a], Vt[q + a]); }
     VG.push(k, j, (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2, Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) / 2);
   }
-  const mc = { mesh, fid: g.attributes._faceid, idx: g.index.array, meta, S, SE, SG, Vt, VG, sphere: worldSphere(mesh) };
-  Object.defineProperty(mc, 'W', { get: getW });
-  return mesh.userData.mc = mc;
+  return { S, SE, SG, Vt, VG, refInv: mesh.matrixWorld.clone().invert() };
 }
 
 // ================================================================ خطوط القطع (الكونتور) — بتترسم وبتتقاس
@@ -1238,7 +1307,7 @@ function computeContours() {
 }
 // الكونتور بيتحوّل لشكل مضبوط من بيانات الوش: مستوي → خط، اسطوانة عمودية على القطع → دايرة
 function contourEnt(C, pick) {
-  if (C.ent) return Object.assign({}, C.ent, { pick });
+  if (C.ent) return Object.assign({}, C.ent, { pick: C.ent.exact ? snapTo(C.ent, pick) : pick });
   const f = C.mc.meta.f?.[C.face] || [0], d = cut.d, s = cut.s; let e;
   const pts = []; for (let i = 0; i < C.segs.length; i += 3) pts.push(V3(C.segs, i));
   if (f[0] === 1) {
@@ -1267,7 +1336,7 @@ function contourEnt(C, pick) {
   else if (f[0] >= 3 && f[0] <= 5) e = revContour(f, d, s, pts);
   if (!e) { let L = 0; for (let i = 0; i + 1 < pts.length; i += 2) L += pts[i].distanceTo(pts[i + 1]); e = { kind: 'curve', len: L, exact: false }; }
   e.cut = true; e.hl = { segs: C.segs }; C.ent = e;
-  return Object.assign({}, e, { pick });
+  return Object.assign({}, e, { pick: e.exact ? snapTo(e, pick) : pick });
 }
 
 // قطع الأسطح الملفوفة (كون / torus / كورة):
@@ -1309,6 +1378,23 @@ function revContour(f, d, s, pts) {
   return null;
 }
 
+// ================================================================ الدقة: النقطة المختارة على الشكل المضبوط
+// المثلثات متخزنة مضغوطة (16 bit)، فالنقطة اللي اللمسة بتجيبها ممكن تبعد عن السطح الحقيقي لحد ~0.08 مم في قطعة 10 متر.
+// علشان كده أي نقطة على حرف أو سطح معروف الشكل بتتنقل على الشكل المضبوط نفسه (أقرب نقطة عليه)، فالقياس منها مضبوط.
+function snapTo(e, p) {
+  if (!p) return p;
+  switch (e.kind) {
+    case 'line': return onLine(p, e.a, e.dir);
+    case 'circle': { const v = p.clone().sub(e.c); v.addScaledVector(e.n, -v.dot(e.n)); return v.lengthSq() > 1e-12 ? e.c.clone().addScaledVector(v.normalize(), e.r) : p; }
+    case 'plane': return onPlane(p, e.n, e.p);
+    case 'cyl': { const f = onLine(p, e.c, e.a), v = p.clone().sub(f); return v.lengthSq() > 1e-12 ? f.addScaledVector(v.normalize(), e.r) : p; }
+    case 'cone': { const al = THREE.MathUtils.degToRad(e.alpha), u = radial(e.apex, e.a, p), g = e.a.clone().multiplyScalar(Math.cos(al)).addScaledVector(u, Math.sin(al)); return e.apex.clone().addScaledVector(g, p.clone().sub(e.apex).dot(g)); }
+    case 'torus': { const tc = e.c.clone().addScaledVector(radial(e.c, e.a, p), e.R), v = p.clone().sub(tc); return v.lengthSq() > 1e-12 ? tc.addScaledVector(v.normalize(), e.r) : p; }
+    case 'sphere': { const v = p.clone().sub(e.c); return v.lengthSq() > 1e-12 ? e.c.clone().addScaledVector(v.normalize(), e.r) : p; }
+  }
+  return p;
+}
+
 // ================================================================ تحويل بيانات الحرف والوش لـ "كيان" نقيسه
 function edgeEnt(mc, id, pick) {
   const e = mc.meta.e?.[id] || [0, 0]; let o;
@@ -1316,7 +1402,7 @@ function edgeEnt(mc, id, pick) {
   else if (e[0] === 2 || e[0] === 3) o = { kind: 'circle', c: V3(e, 1), n: V3(e, 4).normalize(), r: e[7], closed: e[0] === 2, deg: e[8], exact: true };
   else o = { kind: 'curve', len: e[1], exact: false };
   o.tangent = mc.meta.tn !== undefined && id >= mc.meta.tn;   // خط تماس (مش مرسوم)
-  o.pick = pick; o.hl = { mc, edge: id }; return o;
+  o.pick = o.exact ? snapTo(o, pick) : pick; o.hl = { mc, edge: id }; return o;
 }
 function faceEnt(mc, fid, pick) {
   const f = mc.meta.f?.[fid] || [0]; let o;
@@ -1326,7 +1412,7 @@ function faceEnt(mc, fid, pick) {
   else if (f[0] === 4) o = { kind: 'torus', a: V3(f, 1).normalize(), c: V3(f, 4), R: f[7], r: f[8], thS: f[10], phS: f[11], outer: f[12] > 0, exact: true };
   else if (f[0] === 5) o = { kind: 'sphere', c: V3(f, 1), r: f[4], outer: f[5] > 0, exact: true };
   else o = { kind: 'surface', exact: false };
-  o.pick = pick; o.hl = { mc, face: fid }; return o;
+  o.pick = o.exact ? snapTo(o, pick) : pick; o.hl = { mc, face: fid }; return o;
 }
 function entLabel(e) {
   const pre = e.cut ? 'على خط القطع: ' : e.tangent ? 'خط تماس: ' : '';
@@ -1347,14 +1433,15 @@ function entLabel(e) {
 // ================================================================ البحث تحت المؤشر
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function rayAt(x, y) { ndc.set(x / VW * 2 - 1, -y / VH * 2 + 1); ray.setFromCamera(ndc, camera); return ray.ray; }
-function visibleBodies() { return bodyMeshes.filter(m => m.userData.part.visible && m.material !== M.fade && !m.userData.part.water); }
+function visibleBodies() { return bodyMeshes.filter(m => m.userData.part.visible && m.userData.part.mat !== M.fade && !m.userData.part.water); }
 function hitAt(x, y) { rayAt(x, y); const vb = visibleBodies(); ensureAllBVH(vb); return ray.intersectObjects(vb, false).find(h => keep(h.point)) || null; }
 function pickClient(cx, cy) { const r = renderer.domElement.getBoundingClientRect(); return hitAt(cx - r.left, cy - r.top); }
 
-const VP = new THREE.Matrix4();
-function prepProj() { camera.updateMatrixWorld(); VP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); }
+const VP = new THREE.Matrix4(), VPT = new THREE.Matrix4();
+let PE = VP.elements;   // المصفوفة اللي proj بيستخدمها: VP للعالم، أو VP×T لحروف شكل مشترك بين نسخ
+function prepProj() { camera.updateMatrixWorld(); VP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); PE = VP.elements; }
 function proj(x, y, z, out) {
-  const e = VP.elements, w = e[3] * x + e[7] * y + e[11] * z + e[15]; if (w <= 1e-9) return false;
+  const e = PE, w = e[3] * x + e[7] * y + e[11] * z + e[15]; if (w <= 1e-9) return false;
   out[0] = ((e[0] * x + e[4] * y + e[8] * z + e[12]) / w + 1) * 0.5 * VW; out[1] = (1 - (e[1] * x + e[5] * y + e[9] * z + e[13]) / w) * 0.5 * VH; return true;
 }
 const pixW = dist => 2 * dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / VH;
@@ -1379,7 +1466,10 @@ function probe(x, y) {
   const A = [0, 0], B = [0, 0];
   let bestV = null, bestE = null;
   // هل الكورة (مركز + نص قطر) قريبة من الشعاع بمسافة tolPx بكسل؟ (أرقام بس من غير objects، علشان بتتنادى آلاف المرات)
-  const kpw = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / VH, ox = o.x, oy = o.y, oz = o.z, dx = dir.x, dy = dir.y, dz = dir.z;
+  const kpw = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) / VH;
+  // الشعاع (في إطار الشكل: العالم، أو إطار أول نسخة لو الحروف مشتركة). التحويلات كلها لف + نقل، فالمسافات زي ما هي
+  let ox = o.x, oy = o.y, oz = o.z, dx = dir.x, dy = dir.y, dz = dir.z;
+  const lo = new THREE.Vector3(), ld = new THREE.Vector3();
   const nearRay = (cx, cy, cz, rad, tolPx) => {
     const vx = cx - ox, vy = cy - oy, vz = cz - oz; let t = vx * dx + vy * dy + vz * dz; const dist = Math.sqrt(vx * vx + vy * vy + vz * vz); if (t < 0) t = 0;
     const ex = vx - dx * t, ey = vy - dy * t, ez = vz - dz * t, lim = rad + tolPx * kpw * Math.max(camera.near, dist);
@@ -1388,29 +1478,34 @@ function probe(x, y) {
   for (const mesh of vb) {
     // الكرة اللي حوالين القطعة الأول (رخيصة)، وبعدين المجموعات القريبة، وبعدين الحسابات التقيلة
     const sp = worldSphere(mesh);
+    ox = o.x; oy = o.y; oz = o.z; dx = dir.x; dy = dir.y; dz = dir.z;
     if (!nearRay(sp.center.x, sp.center.y, sp.center.z, sp.radius, 30)) continue;
-    const mc = cacheOf(mesh);
-    const Vt = mc.Vt, VG = mc.VG;
+    const mc = cacheOf(mesh), E = mc.E;
+    if (mc.T) { lo.copy(o).applyMatrix4(mc.Ti); ld.copy(dir).transformDirection(mc.Ti); ox = lo.x; oy = lo.y; oz = lo.z; dx = ld.x; dy = ld.y; dz = ld.z; PE = VPT.multiplyMatrices(VP, mc.T).elements; }
+    else { lo.copy(o); ld.copy(dir); PE = VP.elements; }
+    const toW = p => mc.T ? p.applyMatrix4(mc.T) : p;
+    const Vt = E.Vt, VG = E.VG;
     for (let gI = 0; gI < VG.length; gI += 6) {
       if (!nearRay(VG[gI + 2], VG[gI + 3], VG[gI + 4], VG[gI + 5], tolV + 2)) continue;
       for (let i = 3 * VG[gI]; i < 3 * VG[gI + 1]; i += 3) {
         if (!proj(Vt[i], Vt[i + 1], Vt[i + 2], A)) continue;
         const dd = Math.hypot(A[0] - x, A[1] - y); if (dd > tolV || (bestV && dd >= bestV.dd)) continue;
-        const p = new THREE.Vector3(Vt[i], Vt[i + 1], Vt[i + 2]); if (!visible(p)) continue;
+        const p = toW(new THREE.Vector3(Vt[i], Vt[i + 1], Vt[i + 2])); if (!visible(p)) continue;
         bestV = { dd, p, mc };
       }
     }
-    const S = mc.S, SG = mc.SG;
+    const S = E.S, SG = E.SG;
     for (let gI = 0; gI < SG.length; gI += 6) {
       if (!nearRay(SG[gI + 2], SG[gI + 3], SG[gI + 4], SG[gI + 5], tolE + 2)) continue;
       for (let k = 6 * SG[gI]; k < 6 * SG[gI + 1]; k += 6) {
         if (!proj(S[k], S[k + 1], S[k + 2], A) || !proj(S[k + 3], S[k + 4], S[k + 5], B)) continue;
         const dd = segDist2D(x, y, A, B); if (dd > tolE || (bestE && dd >= bestE.dd)) continue;
-        const p = segRay(S[k], S[k + 1], S[k + 2], S[k + 3], S[k + 4], S[k + 5], o, dir); if (!visible(p)) continue;
-        bestE = { dd, p, mc, id: mc.SE[k / 6] };
+        const p = toW(segRay(S[k], S[k + 1], S[k + 2], S[k + 3], S[k + 4], S[k + 5], lo, ld)); if (!visible(p)) continue;
+        bestE = { dd, p, mc, id: E.SE[k / 6] };
       }
     }
   }
+  PE = VP.elements;
   for (let ci = 0; ci < contours.length; ci++) {
     const Ev = contours[ci].ends;
     for (let i = 0; i < Ev.length; i += 3) {
@@ -1437,8 +1532,9 @@ function probe(x, y) {
     if (hit) return asFace();
   } else if (snapMode === 'point') {
     if (bestV) return pt(bestV.p, bestV.sub || 'vertex');
-    if (bestE) return pt(bestE.p, bestE.contour ? 'cut' : 'edge');
-    if (hit) return pt(hit.point.clone(), 'surface');
+    // نقطة على حرف أو سطح: بتتنقل على الشكل المضبوط بتاعه (لو معروف)، وتبقى مضبوطة
+    if (bestE) { const e = asEdge(), o = pt(e.pick || bestE.p, bestE.contour ? 'cut' : 'edge'); o.exact = !!e.exact; return o; }
+    if (hit) { const f = asFace(), o = pt(f.pick, 'surface'); o.exact = !!f.exact; return o; }
   } else if (snapMode === 'edge') { if (bestE) return asEdge(); }
   else if (snapMode === 'face') { if (hit) return asFace(); }
   return null;
@@ -1452,7 +1548,8 @@ const edgeSegsCache = new WeakMap();
 function edgeSegs(mc, id) {
   let m = edgeSegsCache.get(mc); if (!m) edgeSegsCache.set(mc, m = new Map());
   if (m.has(id)) return m.get(id);
-  const out = []; for (let k = 0; k < mc.SE.length; k++) if (mc.SE[k] === id) for (let j = 0; j < 6; j++) out.push(mc.S[6 * k + j]);
+  const E = mc.E, out = [], v = new THREE.Vector3();
+  for (let k = 0; k < E.SE.length; k++) if (E.SE[k] === id) for (let j = 0; j < 6; j += 3) { v.set(E.S[6 * k + j], E.S[6 * k + j + 1], E.S[6 * k + j + 2]); if (mc.T) v.applyMatrix4(mc.T); out.push(v.x, v.y, v.z); }
   const a = new Float32Array(out); m.set(id, a); return a;
 }
 function faceTris(mc, fid) {
@@ -1737,57 +1834,55 @@ document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => openShe
 // ================================================================ الرسم
 const loupeCam = new THREE.PerspectiveCamera();
 const LOUPE = 124, ZOOM = 4;
-// LOD: القطعة تترسم بالنسخة المبسطة بس لو أقصى فرق فيها (lodErr بالمللي) أقل من نص بكسل على الشاشة عند المسافة دي.
-// يعني الفرق مستحيل يبان، ولما تقرّب، النسخة الكاملة بترجع لوحدها. القياس دايماً من النسخة الكاملة والأرقام المضبوطة.
-function setLOD(zoom) {
-  for (const m of lodBodies) {
-    const sp = worldSphere(m), d = Math.max(camera.near, sp.center.distanceTo(camera.position) - sp.radius);
-    const useLod = m.userData.lodErr * zoom / pixW(d) < 0.5;
-    m.visible = !useLod; m.userData.lod.visible = useLod;
-  }
-  // القطع المتقسمة: كل حتة لوحدها حسب بعدها هي
-  for (const m of chunkBodiesList) {
-    const err = m.userData.lodErr, W = m.userData.lod;
-    // لو القطعة كلها بعيدة كفاية: النسخة المبسطة كاملة في أمر رسم واحد بدل عشرات الحتت (أخف على معالج الموبايل)
-    if (W) {
-      const sp = worldSphere(m), d = Math.max(camera.near, sp.center.distanceTo(camera.position) - sp.radius);
-      const whole = err * zoom / pixW(d) < 0.5;
-      W.visible = whole;
-      if (whole) { for (const c of m.userData.chunks) { c.f.visible = false; if (c.l) c.l.visible = false; } continue; }
-    }
-    for (const c of m.userData.chunks) {
-      if (!c.l) continue;
-      const d = Math.max(camera.near, c.sph.center.distanceTo(camera.position) - c.sph.radius);
-      const useLod = err * zoom / pixW(d) < 0.5;
-      c.f.visible = !useLod; c.l.visible = useLod;
-    }
+// ================================================================ الجودة وقت الحركة
+// وانت بتلف أو تقرّب: التفاصيل المسموحة لحد بكسل واحد (بدل نص)، ولو الموبايل مابيلحقش (الرسمة أبطأ من 30 مللي)
+// دقة الشاشة بتنزل خطوة خطوة. أول ما الحركة تقف بـ 0.2 ثانية: رسمة كاملة بأعلى جودة. يعني الصورة الواقفة دايماً بأعلى جودة،
+// والحركة دايماً ناعمة. والقياس مالوش دعوة بده (من الأرقام المضبوطة).
+const DPR_HI = Math.min(devicePixelRatio, 2), DPR_STEPS = [DPR_HI, Math.min(DPR_HI, 1.5), Math.min(DPR_HI, 1), Math.min(DPR_HI, 0.75)];
+let lastMove = 0, moving = false, dprStep = 0, frameEma = 16, lastFrame = 0;
+// آخر حركة "بتبان": الحركة الناعمة في آخرها بتبقى أجزاء من البكسل، دي مانعتبرهاش حركة علشان الجودة الكاملة ترجع على طول
+const _lastCam = new THREE.Vector3(), _lastTgt = new THREE.Vector3();
+controls.addEventListener('change', () => {
+  const d = Math.max(1e-9, camera.position.distanceTo(controls.target));
+  const rel = (camera.position.distanceTo(_lastCam) + controls.target.distanceTo(_lastTgt)) / d;
+  _lastCam.copy(camera.position); _lastTgt.copy(controls.target);
+  if (rel > 1e-3) lastMove = performance.now();
+});
+function qualityTick(now) {
+  const was = moving; moving = now - lastMove < 200;
+  if (moving) {
+    if (lastFrame && now - lastFrame < 500) frameEma = frameEma * 0.8 + (now - lastFrame) * 0.2;
+    lastFrame = now; drawTau = 1;
+    if (frameEma > 30 && dprStep < DPR_STEPS.length - 1 && DPR_STEPS[dprStep + 1] < DPR_STEPS[dprStep]) { dprStep++; frameEma = 20; renderer.setPixelRatio(DPR_STEPS[dprStep]); }
+  } else if (was) {
+    lastFrame = 0; drawTau = 0.5; if (dprStep) { dprStep = 0; renderer.setPixelRatio(DPR_HI); } req();
   }
 }
-// وانت بتلف أو تقرّب موديل تقيل: الدقة بتنزل لـ 1، وبعد ما تسيبه بربع ثانية ترجع زي ما كانت
-const DPR_HI = Math.min(devicePixelRatio, 2), DPR_LO = Math.min(devicePixelRatio, 1);
-let heavyModel = false, dprTimer = 0;
-controls.addEventListener('start', () => { clearTimeout(dprTimer); if (heavyModel && renderer.getPixelRatio() !== DPR_LO) { renderer.setPixelRatio(DPR_LO); req(); } });
-controls.addEventListener('end', () => { if (!heavyModel) return; clearTimeout(dprTimer); dprTimer = setTimeout(() => { renderer.setPixelRatio(DPR_HI); req(); }, 250); });
 
 function loop(now) {
   requestAnimationFrame(loop);
+  controls.update();   // الحركة الناعمة (damping) بتكمّل شوية بعد ما تشيل صباعك
+  qualityTick(now);
   stepJoy(now);
   if (mode === 'measure' && hoverDirty && now - lastProbe > 45) { hoverDirty = false; lastProbe = now; updateHover(); }
   if (!needRender) return; needRender = false;
-  const k = camera.position.distanceTo(controls.target) * 0.0035;
-  [hovGroup, selGroup].forEach(g => g.children.forEach(o => { if (o.userData.dot) o.scale.setScalar(k); }));
+  // نقط التحديد: نص قطرها 5 بكسل على الشاشة مهما كان بعدها (مش مربوطة بحجم الموديل)
+  const k1 = pixW(1) * 5;
+  [hovGroup, selGroup].forEach(g => g.children.forEach(o => { if (o.userData.dot) o.scale.setScalar(Math.max(camera.near, o.position.distanceTo(camera.position)) * k1); }));
   renderer.setScissorTest(false); renderer.setViewport(0, 0, VW, VH);
-  setLOD(1);
+  buildDraw(camera, 1);
   renderer.render(scene, camera);
   if (mode === 'measure') {
-    setLOD(ZOOM);   // العدسة مكبّرة، فمحتاجة تفاصيل أكتر
     // العدسة: نفس الكاميرا بس مكبّرة 4 مرات حوالين المؤشر
     loupeCam.copy(camera); const w = LOUPE / ZOOM;
     loupeCam.setViewOffset(VW, VH, cur.x - w / 2, cur.y - w / 2, w, w); loupeCam.updateProjectionMatrix();
+    buildDraw(loupeCam, ZOOM);   // العدسة: اللي جوه مربعها الصغير بس، وبتفاصيل أكتر لأنها مكبّرة
+    const dots = []; [hovGroup, selGroup].forEach(g => g.children.forEach(o => { if (o.userData.dot) { dots.push(o); o.scale.multiplyScalar(1 / ZOOM); } }));
     const lr = $('loupe').getBoundingClientRect(), vr = view.getBoundingClientRect();
     const lx = lr.left - vr.left + 3, ly = VH - (lr.top - vr.top + 3) - (LOUPE - 6);
     renderer.setScissorTest(true); renderer.setScissor(lx, ly, LOUPE - 6, LOUPE - 6); renderer.setViewport(lx, ly, LOUPE - 6, LOUPE - 6);
     renderer.render(scene, loupeCam);
+    dots.forEach(o => o.scale.multiplyScalar(ZOOM));
     renderer.setScissorTest(false); renderer.setViewport(0, 0, VW, VH);
   }
   const v = new THREE.Vector3();
