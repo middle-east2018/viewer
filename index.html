@@ -346,16 +346,13 @@ function bodyMaterial(opts) {
     color: 0xc6ccd4, specular: 0x2a2f36, shininess: 35, side: THREE.DoubleSide,
     polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, clippingPlanes: clipping,
   }, opts));
-  // اللون البرتقاني للوش اللي من ورا + gl_FragDepth بيشتغلوا وقت السكشن بس (ME_CUT). كتابة gl_FragDepth بتبطّل early-Z
-  // في كارت الشاشة (إنه يتجاهل الحاجة المستخبية قبل ما يلوّنها)، وده كان بيلوّن كل طبقات المواسير اللي فوق بعض من غير داعي
-  m.onBeforeCompile = sh => {
-    sh.uniforms.uCut = cutOn;
-    sh.fragmentShader = 'uniform float uCut;\n' + sh.fragmentShader.replace('#include <dithering_fragment>',
-      '#include <dithering_fragment>\n#ifdef ME_CUT\n if (!gl_FrontFacing && uCut > 0.5) gl_FragColor = vec4(0.85, 0.33, 0.18, gl_FragColor.a);' +
-      '\n gl_FragDepth = gl_FragCoord.z + (gl_FrontFacing ? 0.0 : fwidth(gl_FragCoord.z) * 4.0 + 2e-6);\n#endif');
-  };
   return m;
 }
+// الوش اللي من ورا وقت السكشن (اللي بيبان من جوه القطعة المقطوعة): خطوة رسم لوحدها بلون برتقاني بسيط (من غير إضاءة)،
+// ومزقوق لورا شوية (polygonOffset) علشان مايتخانقش مع الأسطح اللي لازقة فيه. كده الأسطح الأمامية مابتكتبش gl_FragDepth،
+// وكارت الشاشة بيقدر يتجاهل الطبقات المستخبية (early-Z) حتى وقت السكشن
+const backMat = new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(0.85, 0.33, 0.18, THREE.SRGBColorSpace), side: THREE.BackSide,
+  clippingPlanes: clipping, polygonOffset: true, polygonOffsetFactor: 4, polygonOffsetUnits: 4 });
 const M = {
   body: bodyMaterial({ side: THREE.FrontSide }),
   sel: bodyMaterial({ color: 0x4fb3bd, emissive: 0x0b4a52, side: THREE.FrontSide }),
@@ -1026,12 +1023,9 @@ function applyCut() {
   const on = !!cut && cutActive;
   clipping.length = 0; if (on) clipping.push(clipPlane);
   if (on) { if (cut.flip) clipPlane.set(cut.d.clone(), -cut.s); else clipPlane.set(cut.d.clone().negate(), cut.s); }
-  if (cutOn.value !== (on ? 1 : 0)) {
-    cutOn.value = on ? 1 : 0;
-    // من غير قطع الوش اللي من ورا مش باين أصلاً، فمابنرسموش (نص الشغل على كارت الشاشة). مع القطع لازم يترسم برتقاني
-    [M.body, M.sel].forEach(m => m.side = on ? THREE.DoubleSide : THREE.FrontSide);
-    Object.values(M).forEach(m => { if (m.isMeshPhongMaterial) { if (on) m.defines = Object.assign({}, m.defines, { ME_CUT: '' }); else if (m.defines) delete m.defines.ME_CUT; } m.needsUpdate = true; });
-  }
+  // من غير قطع الوش اللي من ورا مش باين أصلاً، فمابيترسمش. مع القطع بيترسم برتقاني في خطوة لوحده (backMat في buildDraw)
+  cutOn.value = on ? 1 : 0;
+  lastMove = performance.now();   // تحريك القطع = حركة: الجودة بتخف لحد ما توقف (زي لف الموديل)
   syncSectionUI(); scheduleContours(); req();
 }
 function syncSectionUI() {
@@ -1072,16 +1066,16 @@ $('secDel').onclick = () => { cut = null; cutActive = false; applyCut(); };
 // شكل المستوى بيظهر ثانية لما القطع يتحرك
 const planeVis = new THREE.Group(); planeVis.visible = false; scene.add(planeVis);
 let planeTimer = 0;
+// (الشكل بيتعمل مرة واحدة وبيتحرك بس، بدل ما يتعمل من جديد مع كل حركة للـ slider ويفضل في الذاكرة)
+{ const pg = new THREE.PlaneGeometry(1, 1);
+  planeVis.add(new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ color: 0xd9542e, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false })),
+    new THREE.LineSegments(new THREE.EdgesGeometry(pg), new THREE.LineBasicMaterial({ color: 0xd9542e }))); }
 function flashPlane() {
   if (!cut) return;
-  planeVis.clear();
   const size = modelSize * 0.8, c = modelBox.getCenter(new THREE.Vector3());
   const pos = c.clone().addScaledVector(cut.d, cut.s - cut.d.dot(c));
   const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), cut.d);
-  const pg = new THREE.PlaneGeometry(size, size);
-  const m = new THREE.Mesh(pg, new THREE.MeshBasicMaterial({ color: 0xd9542e, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }));
-  const l = new THREE.LineSegments(new THREE.EdgesGeometry(pg), new THREE.LineBasicMaterial({ color: 0xd9542e }));
-  [m, l].forEach(o => { o.quaternion.copy(q); o.position.copy(pos); planeVis.add(o); });
+  planeVis.children.forEach(o => { o.quaternion.copy(q); o.position.copy(pos); o.scale.set(size, size, 1); });
   planeVis.visible = true; clearTimeout(planeTimer); planeTimer = setTimeout(() => { planeVis.visible = false; req(); }, 1300); req();
 }
 
@@ -1210,15 +1204,24 @@ function buildDraw(cam, zoom) {
     const dc = s.center.distanceTo(cp), px = 2 * s.radius / (Math.max(cam.near, dc) * kpx);
     if (px < 0.6) continue;
     const near = Math.max(cam.near, dc - s.radius) * kpx, mat = p.mat;
-    if (R.l2 && R.e2 / near < drawTau) pushInst(R.l2, mat, R.mw);
-    else if (R.l1 && R.e1 / near < drawTau) pushInst(R.l1, mat, R.mw);
+    // وقت السكشن: القطعة اللي في الناحية المشالة كلها مابتترسمش. والوش اللي من ورا (برتقاني، خطوة لوحده) للقطع اللي
+    // المستوى بيعدّي عليها بس، لأن أي قطعة مقفولة مش مقطوعة جواها مش باين أصلاً
+    let back = false;
+    if (cutOn.value) {
+      const sd = clipPlane.distanceToPoint(s.center); if (sd < -s.radius) continue;
+      back = sd < s.radius && mat !== M.fade && mat !== M.water;
+    }
+    const put = (geo, sph) => { pushInst(geo, mat, R.mw); if (back && (!sph || Math.abs(clipPlane.distanceToPoint(sph.center)) < sph.radius)) pushInst(geo, backMat, R.mw); };
+    if (R.l2 && R.e2 / near < drawTau) put(R.l2);
+    else if (R.l1 && R.e1 / near < drawTau) put(R.l1);
     else if (R.chunks) {
       for (let i = 0; i < R.chunks.length; i++) {
         const c = R.chunks[i], cs = R.csph[i]; if (!_fr.intersectsSphere(cs)) continue;
+        if (cutOn.value && clipPlane.distanceToPoint(cs.center) < -cs.radius) continue;   // الحتة كلها في الناحية المشالة
         const cn = Math.max(cam.near, cs.center.distanceTo(cp) - cs.radius) * kpx;
-        pushInst(c.lod && R.e1 / cn < drawTau ? c.lod : c.full, mat, R.mw);
+        put(c.lod && R.e1 / cn < drawTau ? c.lod : c.full, cs);
       }
-    } else pushInst(R.full, mat, R.mw);
+    } else put(R.full);
     if (R.lines && p.lmat && px > 3) pushInst(R.lines, p.lmat, R.mw, true);
   }
   for (const b of batches.values()) { b.o.count = b.n; b.o.visible = b.n > 0; if (b.n) { b.o.instanceMatrix.clearUpdateRanges(); b.o.instanceMatrix.addUpdateRange(0, b.n * 16); b.o.instanceMatrix.needsUpdate = true; } }
@@ -1278,7 +1281,15 @@ const contourObj = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.
 contourObj.renderOrder = 2; scene.add(contourObj);
 let contours = [];      // { mc, face, segs: Float32Array, ent }
 let contourTimer = 0;
-function scheduleContours() { clearTimeout(contourTimer); contourTimer = setTimeout(computeContours, 120); }
+// خطوط القطع القديمة بتستخبى وانت بتحرّك القطع، وبتتحسب تاني لما تقف 0.12 ثانية
+function scheduleContours() { clearTimeout(contourTimer); contourObj.visible = false; contourTimer = setTimeout(computeContours, 120); }
+const _cutPlane = new THREE.Plane(), _inv = new THREE.Matrix4();
+function localPos(g) {   // نقط الشكل في إطاره (float) مرة واحدة لكل شكل، والنسخ المكررة بتشاركها
+  if (g.userData.P32) return g.userData.P32;
+  const p = g.attributes.position, out = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) { out[3 * i] = p.getX(i); out[3 * i + 1] = p.getY(i); out[3 * i + 2] = p.getZ(i); }
+  return g.userData.P32 = out;
+}
 function computeContours() {
   contours = [];
   const all = [];
@@ -1286,26 +1297,33 @@ function computeContours() {
     const d = cut.d, s = cut.s;
     for (const mesh of bodyMeshes) {
       const p = mesh.userData.part; if (!p.visible || p.water) continue;
-      const g = mesh.geometry; if (!g.boundingSphere) g.computeBoundingSphere();
-      const sph = g.boundingSphere.clone().applyMatrix4(mesh.matrixWorld);
+      const g = mesh.geometry, sph = worldSphere(mesh);
       if (Math.abs(d.dot(sph.center) - s) > sph.radius) continue;
-      const mc = cacheOf(mesh), W = mc.W, idx = g.index.array;
-      const dvf = i => d.x * W[3 * i] + d.y * W[3 * i + 1] + d.z * W[3 * i + 2] - s;
-      const byFace = new Map();
-      const cutPt = (i, j, out) => { if (i > j) { const t = i; i = j; j = t; } const di = dvf(i), t = di / (di - dvf(j)); out.push(W[3 * i] + (W[3 * j] - W[3 * i]) * t, W[3 * i + 1] + (W[3 * j + 1] - W[3 * i + 1]) * t, W[3 * i + 2] + (W[3 * j + 2] - W[3 * i + 2]) * t); };
-      // المثلثات اللي المستوى بيعدّي عليها بس، من الـ BVH (من غير ما نلف على كل المثلثات)
+      // الحساب في إطار الشكل نفسه (النقط المشتركة بين النسخ، من غير ما نحسب إحداثيات العالم لكل نسخة)،
+      // وبعدين نقط القطع بس بتتحوّل للعالم. والمثلثات اللي المستوى بيعدّي عليها بس، من الـ BVH
+      const mc = cacheOf(mesh), idx = g.index.array, P = localPos(g), fidA = g.attributes._faceid, mw = mesh.matrixWorld;
       ensureBVH(mesh);
-      const lp = new THREE.Plane(d.clone(), -s).applyMatrix4(new THREE.Matrix4().copy(mesh.matrixWorld).invert()), cand = [];
-      g.boundsTree.shapecast({ intersectsBounds: box => lp.intersectsBox(box), intersectsTriangle: (tri, i) => { cand.push(3 * i); return false; } });
-      for (const t of cand) {
-        const a = idx[t], b = idx[t + 1], c = idx[t + 2], dv = { [a]: dvf(a), [b]: dvf(b), [c]: dvf(c) };
-        const sa = dv[a] > 0, sb = dv[b] > 0, sc = dv[c] > 0;
-        if (sa === sb && sb === sc) continue;
-        const f = mc.fid.getX(a); let arr = byFace.get(f); if (!arr) byFace.set(f, arr = []);
-        if (sa !== sb) cutPt(a, b, arr); if (sb !== sc) cutPt(b, c, arr); if (sc !== sa) cutPt(c, a, arr);
-      }
+      const lp = _cutPlane.set(d, -s).applyMatrix4(_inv.copy(mw).invert()), nx = lp.normal.x, ny = lp.normal.y, nz = lp.normal.z, nc = lp.constant;
+      const byFace = new Map();
+      g.boundsTree.shapecast({
+        intersectsBounds: box => lp.intersectsBox(box),
+        intersectsTriangle: (tri, i) => {
+          const a = idx[3 * i], b = idx[3 * i + 1], c = idx[3 * i + 2];
+          const da = nx * P[3 * a] + ny * P[3 * a + 1] + nz * P[3 * a + 2] + nc, db = nx * P[3 * b] + ny * P[3 * b + 1] + nz * P[3 * b + 2] + nc, dc = nx * P[3 * c] + ny * P[3 * c + 1] + nz * P[3 * c + 2] + nc;
+          const sa = da > 0, sb = db > 0, sc = dc > 0; if (sa === sb && sb === sc) return false;
+          const f = fidA.getX(a); let arr = byFace.get(f); if (!arr) byFace.set(f, arr = []);
+          const xpt = (i0, d0, i1, d1) => { if (i0 > i1) { let t = i0; i0 = i1; i1 = t; t = d0; d0 = d1; d1 = t; } const t = d0 / (d0 - d1);
+            arr.push(P[3 * i0] + (P[3 * i1] - P[3 * i0]) * t, P[3 * i0 + 1] + (P[3 * i1 + 1] - P[3 * i0 + 1]) * t, P[3 * i0 + 2] + (P[3 * i1 + 2] - P[3 * i0 + 2]) * t); };
+          if (sa !== sb) xpt(a, da, b, db); if (sb !== sc) xpt(b, db, c, dc); if (sc !== sa) xpt(c, dc, a, da);
+          return false;
+        },
+      });
+      const e = mw.elements;
       for (const [f, arr] of byFace) {
-        const segs = new Float32Array(arr); all.push(segs);
+        const segs = new Float32Array(arr.length);
+        for (let i = 0; i < arr.length; i += 3) { const x = arr[i], y = arr[i + 1], z = arr[i + 2];
+          segs[i] = e[0] * x + e[4] * y + e[8] * z + e[12]; segs[i + 1] = e[1] * x + e[5] * y + e[9] * z + e[13]; segs[i + 2] = e[2] * x + e[6] * y + e[10] * z + e[14]; }
+        all.push(segs);
         // أطراف خط القطع بتاع الوش ده (اللي بتتكرر مرة واحدة) = مكان ما بيقابل الوش اللي جنبه، زي نقطة التماس بين القوس والخط المستقيم
         const cnt = new Map(), key = i => Math.round(segs[i] * 50) + ',' + Math.round(segs[i + 1] * 50) + ',' + Math.round(segs[i + 2] * 50);
         for (let i = 0; i < segs.length; i += 3) { const k = key(i), c = cnt.get(k); cnt.set(k, c ? [c[0] + 1, c[1]] : [1, i]); }
@@ -1318,6 +1336,7 @@ function computeContours() {
   const buf = new Float32Array(n); let o = 0; all.forEach(a => { buf.set(a, o); o += a.length; });
   contourObj.geometry.dispose(); contourObj.geometry = new THREE.BufferGeometry();
   contourObj.geometry.setAttribute('position', new THREE.BufferAttribute(buf, 3));
+  contourObj.visible = true;
   req();
 }
 // الكونتور بيتحوّل لشكل مضبوط من بيانات الوش: مستوي → خط، اسطوانة عمودية على القطع → دايرة
