@@ -463,7 +463,7 @@ async function loadBytes(bytes, entry) {
   if (fmt === 2) toast('الموديل ده معمول قبل قياس الشفة والكون وخطوط التماس. باقي القياس شغال، والمهندس يقدر يحدّثه من صفحته.', 6000);
   else if (fmt < 3) toast('الموديل ده معمول بنسخة قديمة. العرض شغال، بس القياس المضبوط محتاج المهندس يحدّثه.', 6000);
   else { hint('دوس على أي قطعة علشان تعرف اسمها'); setTimeout(() => { if (mode === 'view' && !$('draw').classList.contains('on')) hint(''); }, 5000); }
-  window.__viewer = { THREE, scene, camera, controls, parts, groups, bodyMeshes, probe, pair, single, req, renderer, cur, placeCursor, getSel: () => sel, getHover: () => hoverEnt, contours: () => contours, getCut: () => cut, setCut: (c, a) => { cut = c; cutActive = a; applyCut(); }, computeContours, openSheet, lodBodies, setLOD, cacheOf, faceEnt, isHeavy: () => heavyModel };
+  window.__viewer = { THREE, scene, camera, controls, parts, groups, bodyMeshes, probe, pair, single, req, renderer, cur, placeCursor, getSel: () => sel, getHover: () => hoverEnt, contours: () => contours, getCut: () => cut, setCut: (c, a) => { cut = c; cutActive = a; applyCut(); }, computeContours, openSheet, lodBodies, setLOD, cacheOf, faceEnt, isHeavy: () => heavyModel, chunkBodiesList };
 }
 
 // ---------------------------------------------------------------- نوافذ (dialogs)
@@ -918,7 +918,7 @@ function paint(p) {
   const isSel = selected && selected.group === p.group;
   const faded = fadeOthers && selected && !isSel;
   const mat = p.water ? M.water : isSel ? M.sel : faded ? M.fade : M.body;
-  p.meshes.forEach(m => { m.material = mat; if (m.userData.lod) m.userData.lod.material = mat; });
+  p.meshes.forEach(m => { m.material = mat; if (m.userData.lod) m.userData.lod.material = mat; (m.userData.chunks || []).forEach(c => { c.f.material = mat; if (c.l) c.l.material = mat; }); });
   p.lines.forEach(l => { l.material = faded ? M.edgeFade : M.edge; l.visible = p.visible && !p.water; });
   req();
 }
@@ -1085,10 +1085,68 @@ function worldSphere(mesh) {
 }
 // بيتبني في الخلفية بعد ما الموديل يفتح، قطعة قطعة، علشان أول لمسة تبقى سريعة ومايحصلش تهنيج وقت الفتح
 function buildBVHLater() {
-  const todo = [...new Set(bodyMeshes.map(m => m.geometry))].filter(g => !g.boundsTree).sort((a, b) => b.index.count - a.index.count);
+  const geos = [...new Set(bodyMeshes.map(m => m.geometry))].sort((a, b) => b.index.count - a.index.count);
   const later = bodyMeshes.slice();   // وبعد الـ BVH: بيانات الحروف لكل قطعة (cacheOf) علشان أول حركة للمؤشر ماتتأخرش
-  const step = () => { const t0 = performance.now(); while ((todo.length || later.length) && performance.now() - t0 < 30) { if (todo.length) { const g = todo.shift(); if (!g.boundsTree) g.computeBoundsTree({ maxLeafSize: 8 }); } else cacheOf(later.shift()); } if (todo.length || later.length) setTimeout(step, 16); };
+  const step = () => {
+    const t0 = performance.now();
+    while ((geos.length || later.length) && performance.now() - t0 < 30) {
+      if (geos.length) { const g = geos.shift(); if (!g.boundsTree) g.computeBoundsTree({ maxLeafSize: 8 }); chunkBodies(g); }
+      else cacheOf(later.shift());
+    }
+    if (geos.length || later.length) setTimeout(step, 16); else req();
+  };
   setTimeout(step, 300);
+}
+
+// ================================================================ تقسيم القطع الكبيرة لحتت (للرسم بس)
+// الماسورة الواحدة ممكن تبقى 2.8 متر و44 ألف مثلث: لو حتة صغيرة منها باينة كانت بتترسم كلها، وبالتفاصيل الكاملة لو قريبة.
+// الـ BVH رتّب المثلثات بحيث المتجاورين ورا بعض، فكل ~2000 مثلث ورا بعض = حتة صغيرة متجاورة (كوع، جزء من ماسورة).
+// كل حتة Mesh لوحدها بكورتها، فالشاشة والعدسة بيرسموا الحتت اللي باينة فيهم بس، وكل حتة بتختار التفاصيل (LOD) لوحدها.
+// القطعة الأصلية بتفضل زي ما هي (مخفية) للمس والقياس والسكشن. والنسخ المكررة بتشارك نفس الحتت.
+const CHUNK_TRI = 2048, CHUNK_MIN = 6000;
+const chunkBodiesList = [];
+function chunkGeo(base, idxArr) {   // geometry بتشارك الـ attributes، ومعاها index الحتة بس وكورة محسوبة من نقطها هي
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', base.attributes.position); if (base.attributes.normal) g.setAttribute('normal', base.attributes.normal);
+  g.setIndex(new THREE.BufferAttribute(idxArr, 1));
+  const p = base.attributes.position, v = new THREE.Vector3(), box = new THREE.Box3();
+  for (let k = 0; k < idxArr.length; k++) box.expandByPoint(v.fromBufferAttribute(p, idxArr[k]));
+  g.boundingBox = box; g.boundingSphere = box.getBoundingSphere(new THREE.Sphere());
+  return g;
+}
+function chunkBodies(g) {
+  if (g.userData.chunked || g.index.count / 3 < CHUNK_MIN) return;
+  g.userData.chunked = true;
+  const idx = g.index.array, nt = idx.length / 3, n = Math.ceil(nt / CHUNK_TRI), Ctor = idx.constructor;
+  const chunks = [];
+  for (let c = 0; c < n; c++) chunks.push({ full: chunkGeo(g, new Ctor(idx.subarray(3 * c * CHUNK_TRI, 3 * Math.min(nt, (c + 1) * CHUNK_TRI)))), lod: null });
+  // النسخة المبسطة: كل مثلث فيها بيروح للحتة اللي أقرب لمركزه، فالحتة ونسختها المبسطة بيغطّوا نفس المكان وبيتبدّلوا مع بعض
+  const ref = bodyMeshes.find(m => m.geometry === g), L = ref && ref.userData.lod;
+  if (L) {
+    // (أقرب مثلث في القطعة الكاملة بالـ BVH، والحتة بتاعته = رقمه ÷ 2048)
+    const lg = L.geometry, li = lg.index.array, lp = lg.attributes.position, a = new THREE.Vector3(), b = new THREE.Vector3(), cc = new THREE.Vector3(), hit = {};
+    const buckets = chunks.map(() => []);
+    for (let t = 0; t < li.length; t += 3) {
+      a.fromBufferAttribute(lp, li[t]); b.fromBufferAttribute(lp, li[t + 1]); cc.fromBufferAttribute(lp, li[t + 2]).add(a).add(b).divideScalar(3);
+      const r = g.boundsTree.closestPointToPoint(cc, hit), best = r ? Math.min(chunks.length - 1, Math.floor(r.faceIndex / CHUNK_TRI)) : 0;
+      buckets[best].push(li[t], li[t + 1], li[t + 2]);
+    }
+    const LC = li.constructor;
+    chunks.forEach((ch, c) => { if (buckets[c].length) ch.lod = chunkGeo(lg, new LC(buckets[c])); });
+  }
+  // نعمل Mesh لكل حتة لكل نسخة بتستخدم الشكل ده
+  for (const m of bodyMeshes) {
+    if (m.geometry !== g) continue;
+    const list = chunks.map(ch => {
+      const f = new THREE.Mesh(ch.full, m.material); f.matrix.copy(m.matrix); f.matrixAutoUpdate = false; m.parent.add(f);
+      let l = null; if (ch.lod) { l = new THREE.Mesh(ch.lod, m.material); l.matrix.copy(m.userData.lod ? m.userData.lod.matrix : m.matrix); l.matrixAutoUpdate = false; l.visible = false; m.parent.add(l); }
+      f.raycast = () => {}; if (l) l.raycast = () => {};   // اللمس والقياس من القطعة الأصلية بس
+      f.updateMatrixWorld(true); if (l) l.updateMatrixWorld(true);
+      return { f, l, sph: ch.full.boundingSphere.clone().applyMatrix4(m.matrixWorld) };
+    });
+    m.userData.chunks = list; m.visible = false; if (m.userData.lod) m.userData.lod.visible = false;
+    chunkBodiesList.push(m);
+  }
+  for (let i = lodBodies.length - 1; i >= 0; i--) if (lodBodies[i].geometry === g) lodBodies.splice(i, 1);   // الـ LOD بقى بالحتة
 }
 
 // ================================================================ كاش الإحداثيات + بيانات القياس لكل body
@@ -1454,7 +1512,8 @@ const joyEnd = () => { joy.on = false; joy.dx = joy.dy = 0; knob.style.transform
 $('joy').addEventListener('pointerup', joyEnd); $('joy').addEventListener('pointercancel', joyEnd);
 let lastT = performance.now();
 function stepJoy(now) {
-  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  // الحركة بالوقت الحقيقي: لو الموبايل رسم أبطأ، المؤشر بيمشي نفس المسافة في الثانية بخطوات أكبر (لحد ربع ثانية في الخطوة)
+  const dt = Math.min(0.25, (now - lastT) / 1000); lastT = now;
   if (!joy.on || mode !== 'measure') return;
   const m = Math.hypot(joy.dx, joy.dy); if (m < 0.04) return;
   const speed = 6 + 320 * m * m;              // px/s
@@ -1685,6 +1744,23 @@ function setLOD(zoom) {
     const sp = worldSphere(m), d = Math.max(camera.near, sp.center.distanceTo(camera.position) - sp.radius);
     const useLod = m.userData.lodErr * zoom / pixW(d) < 0.5;
     m.visible = !useLod; m.userData.lod.visible = useLod;
+  }
+  // القطع المتقسمة: كل حتة لوحدها حسب بعدها هي
+  for (const m of chunkBodiesList) {
+    const err = m.userData.lodErr, W = m.userData.lod;
+    // لو القطعة كلها بعيدة كفاية: النسخة المبسطة كاملة في أمر رسم واحد بدل عشرات الحتت (أخف على معالج الموبايل)
+    if (W) {
+      const sp = worldSphere(m), d = Math.max(camera.near, sp.center.distanceTo(camera.position) - sp.radius);
+      const whole = err * zoom / pixW(d) < 0.5;
+      W.visible = whole;
+      if (whole) { for (const c of m.userData.chunks) { c.f.visible = false; if (c.l) c.l.visible = false; } continue; }
+    }
+    for (const c of m.userData.chunks) {
+      if (!c.l) continue;
+      const d = Math.max(camera.near, c.sph.center.distanceTo(camera.position) - c.sph.radius);
+      const useLod = err * zoom / pixW(d) < 0.5;
+      c.f.visible = !useLod; c.l.visible = useLod;
+    }
   }
 }
 // وانت بتلف أو تقرّب موديل تقيل: الدقة بتنزل لـ 1، وبعد ما تسيبه بربع ثانية ترجع زي ما كانت
