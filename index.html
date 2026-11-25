@@ -567,7 +567,7 @@ async function renderHome() {
   h += `</div>`;
   if (et) {
     h += `<div class="hcard"><h3><span class="grow">المهندسين</span><button class="sbtn" id="engOut">خروج</button></h3>
-      <div class="btns" style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px"><button class="btn" id="upNew">ارفع موديل جديد</button><button class="btn ghost" id="engRefresh">تحديث اللستة</button></div>
+      <div class="btns" style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px"><button class="btn" id="upNew">ارفع موديل جديد</button></div>
       <div id="engList"><p>بيجيب الموديلات...</p></div></div>`;
   } else {
     h += `<div class="hcard"><h3>المهندسين</h3><p>رفع الموديلات وإدارتها للمهندسين بس.</p><div style="margin-top:8px"><button class="btn ghost" id="engIn">دخول المهندسين</button></div></div>`;
@@ -589,13 +589,6 @@ async function onHomeClick(ev) {
   if (t.id === 'engIn') return engLogin();
   if (t.id === 'engOut') { localStorage.removeItem('me_eng'); renderHome(); return; }
   if (t.id === 'upNew') return uploadDialog(null);
-  if (t.id === 'engRefresh') {   // بيبان إنه شغال: الزرار بيتقفل ويكتب «بيحدّث...»، واللستة بتبهت لحد ما الجديدة توصل
-    if (t.disabled) return;
-    t.disabled = true; t.textContent = 'بيحدّث...'; $('engList').style.opacity = '.45';
-    const ok = await loadEngList();
-    const btn = $('engRefresh'); if (btn) { btn.disabled = false; btn.textContent = 'تحديث اللستة'; } if ($('engList')) $('engList').style.opacity = '';
-    if (ok) toast('اللستة اتحدّثت ✓ (' + engModels.length + ' موديل)'); return;
-  }
   if (t.id === 'reconvAll') return reconvertAll();
   const id = t.dataset.id, m = engModels && engModels.find(x => x.id === id); if (!m) return;
   if (t.dataset.act === 'share') return shareDialog(m);
