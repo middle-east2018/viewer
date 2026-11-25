@@ -75,8 +75,8 @@ input[type=range]{width:100%;height:30px;accent-color:var(--cut);margin:2px 0}
 #draw svg{width:100%;height:100%}
 /* المؤشر والعدسة */
 #cursor{position:absolute;width:0;height:0;z-index:4;pointer-events:none;display:none}
-#cursor svg{position:absolute;left:-22px;top:-22px;width:44px;height:44px;overflow:visible}
-#curLbl{position:absolute;left:16px;top:-40px;background:rgba(0,120,150,.92);color:#fff;font-size:12.5px;border-radius:8px;padding:3px 8px;white-space:nowrap;direction:rtl}
+#cursor svg{position:absolute;left:-1.3px;top:-1.3px;width:52px;height:44px;overflow:visible;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35))}
+#curLbl{position:absolute;left:46px;top:2px;background:rgba(0,120,150,.92);color:#fff;font-size:12.5px;border-radius:8px;padding:3px 8px;white-space:nowrap;direction:rtl}
 #curLbl.none{background:rgba(28,38,51,.7)}
 #loupe{position:absolute;top:60px;left:8px;width:124px;height:124px;border-radius:6px;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.3);z-index:4;pointer-events:none;display:none}
 #loupe::before,#loupe::after{content:"";position:absolute;background:rgba(217,84,46,.9)}
@@ -177,7 +177,17 @@ ol.steps li.ok{color:#1e7a3e}
 <div id="draw"><svg><line id="drawLine" stroke="#d9542e" stroke-width="3" stroke-dasharray="8 6" x1="0" y1="0" x2="0" y2="0"/></svg></div>
 <div id="hint"><span id="hintTxt"></span></div>
 <div id="tags"></div>
-<div id="cursor"><svg viewBox="-22 -22 44 44"><circle r="13" fill="none" stroke="#fff" stroke-width="4"/><circle r="13" fill="none" stroke="#d9542e" stroke-width="2"/><path d="M-21 0h13M8 0h13M0 -21v13M0 8v13" stroke="#fff" stroke-width="4"/><path d="M-21 0h13M8 0h13M0 -21v13M0 8v13" stroke="#d9542e" stroke-width="2"/><circle r="1.6" fill="#d9542e"/></svg><div id="curLbl" class="none"></div></div>
+<!-- مؤشر القياس زي أداة Measure في سوليدوركس: سهم طرفه هو نقطة التحديد بالظبط، ومعاه مسطرة، وأيقونة بتقول هيمسك إيه (ركن / حرف / دايرة / سطح) -->
+<div id="cursor"><svg viewBox="0 0 40 34" aria-hidden="true">
+  <path d="M1 1 L1 19.5 L5.6 15.3 L8.6 22.2 L11.6 20.9 L8.6 14.1 L14.8 14.1 Z" fill="#fff" stroke="#1c2633" stroke-width="1.3" stroke-linejoin="round"/>
+  <g transform="translate(12 23.5)"><rect width="19" height="7" rx="1.2" fill="#f6c445" stroke="#3a2c00" stroke-width=".9"/><path d="M3.5 0v2.6M6.5 0v4M9.5 0v2.6M12.5 0v4M15.5 0v2.6" stroke="#3a2c00" stroke-width=".9"/></g>
+  <g transform="translate(19 2)" id="curIco">
+    <g id="ciV" style="display:none"><circle cx="6" cy="6" r="3.2" fill="#00a3c4" stroke="#fff" stroke-width="1.4"/></g>
+    <g id="ciE" style="display:none"><path d="M1 11 L11 1" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M1 11 L11 1" stroke="#00a3c4" stroke-width="2.2" stroke-linecap="round"/></g>
+    <g id="ciC" style="display:none"><circle cx="6" cy="6" r="4.8" fill="none" stroke="#fff" stroke-width="3.6"/><circle cx="6" cy="6" r="4.8" fill="none" stroke="#00a3c4" stroke-width="1.8"/></g>
+    <g id="ciF" style="display:none"><path d="M1 4.5 L8 1 L12 8 L5 11.5 Z" fill="#00a3c4" fill-opacity=".55" stroke="#007f99" stroke-width="1.2" stroke-linejoin="round"/></g>
+  </g>
+</svg><div id="curLbl" class="none"></div></div>
 <div id="loupe"></div>
 <div id="mRes"></div>
 <div id="home"></div>
@@ -236,7 +246,7 @@ ol.steps li.ok{color:#1e7a3e}
 </section>
 
 <section class="sheet" id="sMeasure">
-  <div class="hd"><span class="grow">القياس</span><button class="chip" id="mClear">امسح</button><button class="x" data-close>×</button></div>
+  <div class="hd"><span class="grow">القياس</span><button class="chip" id="mLoupe" aria-pressed="true">العدسة</button><button class="chip" id="mClear">امسح</button><button class="x" data-close>×</button></div>
   <div class="bd">
     <div class="row" style="margin-top:2px">
       <button class="chip on" data-snap="auto">تلقائي</button>
@@ -304,7 +314,7 @@ renderer.setClearColor(0xe6eaef);
 view.appendChild(renderer.domElement);
 // لو الموبايل سحب كارت الشاشة من التطبيق (ذاكرة قليلة / التطبيق في الخلفية)، three بيرجّع كل حاجة لوحده لما يرجع، وإحنا نرسم تاني
 renderer.domElement.addEventListener('webglcontextlost', e => { e.preventDefault(); toast('الموبايل وقّف العرض لحظة، بيرجّعه...'); });
-renderer.domElement.addEventListener('webglcontextrestored', () => { setTimeout(() => { needRender = true; }, 50); });
+renderer.domElement.addEventListener('webglcontextrestored', () => { setTimeout(() => { needRender = true; modelDirty = true; }, 50); });
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(40, 1, 1, 1e6);
 scene.add(camera);
@@ -315,8 +325,9 @@ controls.enableDamping = false;   // الموديل لازق في الصباع �
 controls.zoomToCursor = true;
 controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
 
-let needRender = true, hoverDirty = false;
-const req = () => { needRender = true; hoverDirty = true; };
+// needRender = محتاجين رسمة. modelDirty = الموديل نفسه اتغيّر (كاميرا، ألوان، سكشن...). حركة المؤشر لوحدها مابتغيّرش الموديل
+let needRender = true, hoverDirty = false, modelDirty = true;
+const req = () => { needRender = true; hoverDirty = true; modelDirty = true; };
 controls.addEventListener('change', req);
 let VW = 1, VH = 1;
 function resize() {
@@ -1331,10 +1342,18 @@ function contourEnt(C, pick) {
       const c = c0.clone().addScaledVector(ax, (s - d.dot(c0)) / k);
       e = { kind: 'circle', c, n: ax.clone(), r, closed: true, exact: true };
     } else if (Math.abs(k) < 1e-4) {
+      // القطع موازي للمحور: الخطين على بعد √(r²−δ²) من المحور في المستوى (δ = بعد المحور عن المستوى) → خط مضبوط
       let lo = Infinity, hi = -Infinity; const ref = pts[0];
       pts.forEach(p => { const t = p.clone().sub(c0).dot(ax); lo = Math.min(lo, t); hi = Math.max(hi, t); });
-      const off = ref.clone().sub(c0); off.addScaledVector(ax, -off.dot(ax));
-      e = { kind: 'line', a: c0.clone().add(off).addScaledVector(ax, lo), b: c0.clone().add(off).addScaledVector(ax, hi), dir: ax.clone(), len: hi - lo, exact: false };
+      const dl = d.dot(c0) - s, q = r * r - dl * dl;
+      if (q >= 0) {
+        const u = new THREE.Vector3().crossVectors(ax, d).normalize(), base = c0.clone().addScaledVector(d, -dl);
+        const side = ref.clone().sub(base).dot(u) >= 0 ? 1 : -1, foot = base.addScaledVector(u, side * Math.sqrt(q));
+        e = { kind: 'line', a: foot.clone().addScaledVector(ax, lo), b: foot.clone().addScaledVector(ax, hi), dir: ax.clone(), len: hi - lo, exact: true };
+      } else {
+        const off = ref.clone().sub(c0); off.addScaledVector(ax, -off.dot(ax));
+        e = { kind: 'line', a: c0.clone().add(off).addScaledVector(ax, lo), b: c0.clone().add(off).addScaledVector(ax, hi), dir: ax.clone(), len: hi - lo, exact: false };
+      }
     }
   }
   else if (f[0] >= 3 && f[0] <= 5) e = revContour(f, d, s, pts);
@@ -1546,7 +1565,7 @@ function probe(x, y) {
 
 // ================================================================ الرسم المميز (hover / selected)
 const hovGroup = new THREE.Group(), selGroup = new THREE.Group();
-scene.add(hovGroup, selGroup);
+const overlay = new THREE.Scene(); overlay.add(hovGroup, selGroup);   // التلوين اللي فوق الموديل (بيترسم فوق صورة الموديل المحفوظة)
 function clearGroup(g) { g.traverse(o => { if (o.geometry && o.geometry !== dotGeo) o.geometry.dispose(); }); g.clear(); }
 const edgeSegsCache = new WeakMap();
 function edgeSegs(mc, id) {
@@ -1591,11 +1610,15 @@ function updateHover() {
   hoverEnt = probe(cur.x, cur.y);
   clearGroup(hovGroup); drawEnt(hoverEnt, hovGroup, true);
   const L = $('curLbl'); L.textContent = hoverEnt ? entLabel(hoverEnt) : 'مفيش حاجة هنا'; L.classList.toggle('none', !hoverEnt);
-  // الكلام جنب المؤشر من الناحية اللي فيها مكان، ومايخرجش برة الشاشة
-  const w = L.offsetWidth, h = L.offsetHeight;
-  const goLeft = cur.x + 16 + w > VW - 4 && cur.x - 16 - w >= 4;
-  L.style.left = goLeft ? (-16 - w) + 'px' : Math.min(16, VW - 4 - w - cur.x) + 'px'; L.style.right = 'auto';
-  L.style.top = cur.y - 40 < 4 ? '18px' : '-40px';
+  // أيقونة جنب السهم: ركن / حرف / دايرة / سطح (زي سوليدوركس)
+  const k = !hoverEnt ? '' : hoverEnt.kind === 'point' ? 'V' : hoverEnt.kind === 'circle' ? 'C' : hoverEnt.kind === 'line' || hoverEnt.kind === 'curve' ? 'E' : 'F';
+  ['V', 'E', 'C', 'F'].forEach(x => $('ci' + x).style.display = x === k ? '' : 'none');
+  loupeDirty = true;
+  // الكلام يمين السهم، ولو مفيش مكان يروح الشمال، ومايخرجش برة الشاشة
+  const w = L.offsetWidth; L.style.right = 'auto';
+  if (cur.x + 46 + w <= VW - 4) { L.style.left = '46px'; L.style.top = '2px'; }            // يمين السهم
+  else if (cur.x - 8 - w >= 4) { L.style.left = (-8 - w) + 'px'; L.style.top = '2px'; }     // شمال السهم
+  else { L.style.left = Math.max(4 - cur.x, VW - 4 - w - cur.x) + 'px'; L.style.top = '48px'; }   // تحت المسطرة
   needRender = true;
 }
 // joystick: كل ما تبعد عن النص كل ما المؤشر يجري أسرع. قريب من النص = حركة بطيئة جداً للدقة
@@ -1631,6 +1654,12 @@ $('pickBtn').onclick = () => {
   sel.push(hoverEnt); renderSel();
 };
 $('mClear').onclick = () => { sel = []; renderSel(); };
+// زرار العدسة: يخفيها ويظهرها، والاختيار بيتحفظ على الموبايل
+function syncLoupeBtn() { $('mLoupe').classList.toggle('on', loupeOn); $('mLoupe').setAttribute('aria-pressed', loupeOn); }
+$('mLoupe').onclick = () => {
+  loupeOn = !loupeOn; localStorage.setItem('me_loupe', loupeOn ? '1' : '0'); syncLoupeBtn();
+  $('loupe').style.display = mode === 'measure' && loupeOn ? 'block' : 'none'; loupeDirty = true; needRender = true;
+};
 document.querySelectorAll('[data-snap]').forEach(b => b.onclick = () => { snapMode = b.dataset.snap; document.querySelectorAll('[data-snap]').forEach(x => x.classList.toggle('on', x === b)); hoverDirty = true; });
 let infoTimer = 0;
 function flashInfo(t) { const el = $('selInfo'); const old = el.innerHTML; el.innerHTML = '<span style="color:var(--cut)">' + t + '</span>'; clearTimeout(infoTimer); infoTimer = setTimeout(() => renderSelInfo(), 1500); }
@@ -1641,7 +1670,7 @@ function renderSelInfo() {
     : sel.map((e, i) => '<div class="s">' + n[i] + ': ' + esc(entLabel(e)) + '</div>').join('') + (sel.length === 1 ? '<div class="muted">حدد حاجة تانية علشان تقيس بينهم</div>' : '');
 }
 function renderSel() {
-  clearGroup(selGroup); tags.forEach(t => t.el.remove()); tags = [];
+  clearGroup(selGroup); tags.forEach(t => t.el.remove()); tags = []; loupeDirty = true;
   sel.forEach(e => drawEnt(e, selGroup, false));
   renderSelInfo();
   const R = sel.length === 1 ? single(sel[0]) : sel.length === 2 ? pair(sel[0], sel[1]) : null;
@@ -1820,7 +1849,7 @@ function openSheet(id) {
   document.querySelectorAll('#bar button').forEach(b => b.classList.toggle('on', b.dataset.sheet === id));
   const was = mode; mode = id === 'sMeasure' ? 'measure' : 'view';
   const m = mode === 'measure';
-  ['cursor', 'loupe'].forEach(k => $(k).style.display = m ? 'block' : 'none');
+  $('cursor').style.display = m ? 'block' : 'none'; $('loupe').style.display = m && loupeOn ? 'block' : 'none';
   if (m && was !== 'measure') {
     select(null); hint('');
     // المؤشر في نص الجزء اللي باين من الشاشة (فوق الشيت)
@@ -1830,7 +1859,7 @@ function openSheet(id) {
   if (!m && was === 'measure') { clearGroup(hovGroup); hoverEnt = null; $('mRes').classList.remove('show'); clearGroup(selGroup); tags.forEach(t => t.el.remove()); tags = []; }
   if (id) $('card').classList.remove('show');
   if (id !== 'sSection') { $('draw').classList.remove('on'); }
-  needRender = true;
+  needRender = true; modelDirty = true;
 }
 document.querySelectorAll('#bar button').forEach(b => b.onclick = () => openSheet(b.classList.contains('on') ? null : b.dataset.sheet));
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => openSheet(null));
@@ -1838,6 +1867,64 @@ document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => openShe
 // ================================================================ الرسم
 const loupeCam = new THREE.PerspectiveCamera();
 const LOUPE = 124, ZOOM = 4;
+let loupeOn = localStorage.getItem('me_loupe') !== '0';   // زرار العدسة في شيت القياس، والاختيار بيتحفظ على الموبايل
+
+// الصورة المحفوظة للموديل (لون + عمق) بمقاس الشاشة الحقيقي
+let _mrt = null; const _sz = new THREE.Vector2();
+function modelTarget() {
+  renderer.getDrawingBufferSize(_sz);
+  if (!_mrt || _mrt.width !== _sz.x || _mrt.height !== _sz.y) {
+    if (_mrt) _mrt.dispose();
+    _mrt = new THREE.WebGLRenderTarget(_sz.x, _sz.y, { samples: renderer.getContext().getContextAttributes().antialias ? 4 : 0, colorSpace: THREE.SRGBColorSpace,
+      depthTexture: new THREE.DepthTexture(_sz.x, _sz.y) });
+    modelDirty = true;
+  }
+  return _mrt;
+}
+// نسخ الصورة للشاشة: اللون والعمق الاتنين (gl_FragDepth)، علشان التلوين اللي فوق يتقارن بعمق الموديل
+const copyMat = new THREE.ShaderMaterial({
+  uniforms: { tC: { value: null }, tD: { value: null } },
+  vertexShader: 'varying vec2 vUv;\nvoid main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+  fragmentShader: 'uniform sampler2D tC;\nuniform sampler2D tD;\nvarying vec2 vUv;\nvoid main() {\n gl_FragColor = texture2D(tC, vUv);\n gl_FragDepth = texture2D(tD, vUv).r;\n #include <colorspace_fragment>\n}',
+  depthTest: true, depthFunc: THREE.AlwaysDepth, depthWrite: true,
+});
+const copyScene = new THREE.Scene(); { const q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), copyMat); q.frustumCulled = false; copyScene.add(q); }
+// العدسة في صورة صغيرة لوحدها: بتترسم من جديد لما حاجة تتغير. ولو المؤشر بيجري بسرعة، بتترسم صورة آه وصورة لأ وبتفاصيل أقل،
+// وأول ما يهدى بتترسم مع كل صورة وبالتفاصيل الكاملة
+let _lrt = null, loupeDirty = true, loupeFrame = { x: -1, y: -1, n: 0 }, _lastCur = { x: 0, y: 0, t: 0 }, curSpeed = 0;
+const loupeMat = new THREE.ShaderMaterial({
+  uniforms: { tC: { value: null } }, depthTest: false, depthWrite: false,
+  vertexShader: 'varying vec2 vUv;\nvoid main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+  fragmentShader: 'uniform sampler2D tC;\nvarying vec2 vUv;\nvoid main() {\n gl_FragColor = texture2D(tC, vUv);\n #include <colorspace_fragment>\n}',
+});
+const loupeScene = new THREE.Scene(); { const q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), loupeMat); q.frustumCulled = false; loupeScene.add(q); }
+function drawLoupe(now) {
+  const px = Math.round((LOUPE - 6) * renderer.getPixelRatio());
+  if (!_lrt || _lrt.width !== px) { if (_lrt) _lrt.dispose(); _lrt = new THREE.WebGLRenderTarget(px, px, { colorSpace: THREE.SRGBColorSpace, samples: renderer.getContext().getContextAttributes().antialias ? 4 : 0 }); loupeDirty = true; }
+  // سرعة المؤشر (بكسل في الثانية)
+  const dt = Math.max(1, now - _lastCur.t), sp = Math.hypot(cur.x - _lastCur.x, cur.y - _lastCur.y) / dt * 1000;
+  curSpeed = curSpeed * 0.6 + sp * 0.4; _lastCur = { x: cur.x, y: cur.y, t: now };
+  if (cur.x !== loupeFrame.x || cur.y !== loupeFrame.y) loupeDirty = true;
+  const fast = curSpeed > 250;
+  if (loupeDirty && (!fast || ++loupeFrame.n % 2 === 0)) {
+    loupeCam.copy(camera); const w = LOUPE / ZOOM;
+    loupeCam.setViewOffset(VW, VH, cur.x - w / 2, cur.y - w / 2, w, w); loupeCam.updateProjectionMatrix();
+    const tau = drawTau; if (fast) drawTau = 1;
+    buildDraw(loupeCam, ZOOM); drawTau = tau;   // اللي جوه مربع العدسة بس، وبتفاصيل أكتر لأنها مكبّرة
+    const dots = []; [hovGroup, selGroup].forEach(g => g.children.forEach(o => { if (o.userData.dot) { dots.push(o); o.scale.multiplyScalar(1 / ZOOM); } }));
+    fatMats.forEach(m => m.resolution.set(LOUPE - 6, LOUPE - 6));   // سُمك الخطوط الملوّنة بالبكسل جوه العدسة زي الشاشة
+    renderer.setRenderTarget(_lrt); renderer.autoClear = true; renderer.render(scene, loupeCam); renderer.autoClear = false; renderer.render(overlay, loupeCam); renderer.setRenderTarget(null);
+    fatMats.forEach(m => m.resolution.set(VW, VH));
+    dots.forEach(o => o.scale.multiplyScalar(ZOOM));
+    loupeDirty = false; loupeFrame.x = cur.x; loupeFrame.y = cur.y;
+  } else if (loupeDirty) needRender = true;   // اتأجلت للصورة الجاية
+  const lr = $('loupe').getBoundingClientRect(), vr = view.getBoundingClientRect();
+  const lx = lr.left - vr.left + 3, ly = VH - (lr.top - vr.top + 3) - (LOUPE - 6);
+  loupeMat.uniforms.tC.value = _lrt.texture;
+  renderer.setScissorTest(true); renderer.setScissor(lx, ly, LOUPE - 6, LOUPE - 6); renderer.setViewport(lx, ly, LOUPE - 6, LOUPE - 6);
+  renderer.render(loupeScene, camera);
+  renderer.setScissorTest(false); renderer.setViewport(0, 0, VW, VH);
+}
 // ================================================================ الجودة وقت الحركة
 // وانت بتلف أو تقرّب: التفاصيل المسموحة لحد بكسل واحد (بدل نص)، ولو الموبايل مابيلحقش 50 صورة في الثانية (الرسمة أبطأ من 20 مللي)
 // دقة الشاشة بتنزل خطوة خطوة. أول ما الحركة تقف بـ 0.2 ثانية: رسمة كاملة بأعلى جودة. يعني الصورة الواقفة دايماً بأعلى جودة،
@@ -1875,20 +1962,20 @@ function loop(now) {
   const k1 = pixW(1) * 5;
   [hovGroup, selGroup].forEach(g => g.children.forEach(o => { if (o.userData.dot) o.scale.setScalar(Math.max(camera.near, o.position.distanceTo(camera.position)) * k1); }));
   renderer.setScissorTest(false); renderer.setViewport(0, 0, VW, VH);
-  buildDraw(camera, 1);
-  renderer.render(scene, camera);
-  if (mode === 'measure') {
-    // العدسة: نفس الكاميرا بس مكبّرة 4 مرات حوالين المؤشر
-    loupeCam.copy(camera); const w = LOUPE / ZOOM;
-    loupeCam.setViewOffset(VW, VH, cur.x - w / 2, cur.y - w / 2, w, w); loupeCam.updateProjectionMatrix();
-    buildDraw(loupeCam, ZOOM);   // العدسة: اللي جوه مربعها الصغير بس، وبتفاصيل أكتر لأنها مكبّرة
-    const dots = []; [hovGroup, selGroup].forEach(g => g.children.forEach(o => { if (o.userData.dot) { dots.push(o); o.scale.multiplyScalar(1 / ZOOM); } }));
-    const lr = $('loupe').getBoundingClientRect(), vr = view.getBoundingClientRect();
-    const lx = lr.left - vr.left + 3, ly = VH - (lr.top - vr.top + 3) - (LOUPE - 6);
-    renderer.setScissorTest(true); renderer.setScissor(lx, ly, LOUPE - 6, LOUPE - 6); renderer.setViewport(lx, ly, LOUPE - 6, LOUPE - 6);
-    renderer.render(scene, loupeCam);
-    dots.forEach(o => o.scale.multiplyScalar(ZOOM));
-    renderer.setScissorTest(false); renderer.setViewport(0, 0, VW, VH);
+  if (mode !== 'measure') {
+    // المنظر: الموديل بيتحرك، فبيترسم على طول
+    buildDraw(camera, 1); renderer.render(scene, camera);
+    renderer.autoClear = false; renderer.render(overlay, camera); renderer.autoClear = true;
+  } else {
+    // القياس: الموديل بيترسم مرة في صورة محفوظة (لون + عمق) وقت ما يتغيّر بس. مع حركة المؤشر بننسخ الصورة (مثلثين)
+    // ونرسم فوقها التلوين اللي تحت المؤشر، والعمق المحفوظ بيخلي التلوين يستخبى ورا الموديل صح
+    const mrt = modelTarget();
+    if (modelDirty) { buildDraw(camera, 1); renderer.setRenderTarget(mrt); renderer.render(scene, camera); renderer.setRenderTarget(null); modelDirty = false; loupeDirty = true; }
+    copyMat.uniforms.tC.value = mrt.texture; copyMat.uniforms.tD.value = mrt.depthTexture; copyMat.depthWrite = true;
+    renderer.render(copyScene, camera);
+    renderer.autoClear = false; renderer.render(overlay, camera);
+    if (loupeOn) drawLoupe(now);
+    renderer.autoClear = true;
   }
   const v = new THREE.Vector3();
   tags.forEach(t => { v.copy(t.pos).project(camera); t.el.style.display = v.z < 1 ? '' : 'none'; t.el.style.left = ((v.x + 1) / 2 * VW) + 'px'; t.el.style.top = ((1 - v.y) / 2 * VH + 52) + 'px'; });
@@ -1900,7 +1987,7 @@ $('backBtn').onclick = () => { location.href = BASE; };
 if (location.hostname === 'localhost') window.__dbg = { bodyMeshes, cacheOf, faceEnt, edgeEnt, single, pair, entLabel, contourEnt, computeContours, get contours() { return contours; },
   cutAt(d, s) { cut = { d: new THREE.Vector3(...d).normalize(), s, kind: 'line', flip: false }; cutActive = true; applyCut(); computeContours(); } };
 (async () => {
-  resize(); requestAnimationFrame(loop); instRefresh();
+  resize(); requestAnimationFrame(loop); instRefresh(); syncLoupeBtn();
   const p = params.get('p'), m = params.get('m');
   tidyCache();
   try {
