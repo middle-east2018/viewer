@@ -1,7 +1,7 @@
 /* service worker بتاع عارض الموديلات:
    - الصفحة وملفات التطبيق بتتجاب من النت الأول (علشان التحديثات توصل على طول)، ولو مفيش نت بتفتح آخر نسخة.
    - الموديلات نفسها في cache تاني (me-models-v1) والتطبيق هو اللي بيديره، وده مابيتمسحش هنا أبداً. */
-const V = "me-viewer-e3cc70ad36";
+const V = "me-viewer-6a0c953a9a";
 const KEEP = [V, "me-ext", "me-models-v1"];
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/favicon-64.png",
   "vendor/three/build/three.module.js", "vendor/three/build/three.core.js", "vendor/qrcode.mjs", "vendor/three-mesh-bvh.module.js",
