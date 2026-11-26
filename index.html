@@ -22,6 +22,7 @@ html[data-theme=dark]{--blue:#3d7cc0;--bg:#11161d;--card:#1b222c;--ink:#e6ebf1;-
 html[data-theme=dark] .pill.lock{background:#3a2a10;color:#ffc46b}html[data-theme=dark] .pill.off{background:#3c1a18;color:#ff8a80}html[data-theme=dark] .pill.old{background:#1c2c44;color:#8ab4f8}
 html[data-theme=dark] .sbtn.red{color:#ff8a80;border-color:#5a2a26}html[data-theme=dark] .err,html[data-theme=dark] #loading .err{color:#ff8a80}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Readex Pro",system-ui,sans-serif;font-size:15px;-webkit-user-select:none;user-select:none}
 bdi{unicode-bidi:isolate}
 #top{position:absolute;top:0;left:0;right:0;height:52px;background:var(--head);color:#fff;display:flex;align-items:center;gap:10px;padding:0 14px;z-index:5}
@@ -171,6 +172,47 @@ html[data-theme=dark] #themeBtn .moon,html:not([data-theme=dark]) #themeBtn .sun
 .instGo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:12px;border:0;border-radius:12px;background:#fff;color:var(--blue);font:inherit;font-size:16px;font-weight:600;min-height:48px;cursor:pointer}
 .instGo svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .iosHow{background:rgba(255,255,255,.12);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13.5px;line-height:1.7}
+/* ===== شاشة البداية (الإدارة / أنا موظف) زي تطبيق العمالة ===== */
+#start{position:absolute;inset:0;z-index:8;background:var(--bg);display:none;overflow:auto;padding:24px 16px calc(24px + var(--safe-b));-webkit-user-select:none;user-select:none}
+#start.show{display:grid;place-items:center}
+.st-in{width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
+.mark{width:76px;height:76px;border-radius:20px;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:700;font-size:26px;letter-spacing:.5px;margin-bottom:12px;font-family:"Segoe UI",Tahoma,sans-serif}
+#start h1{font-size:26px;margin:0;font-weight:700;line-height:1.3;color:var(--ink)}
+.st-sub{margin:0 0 22px;color:var(--mute);font-size:15px}
+.choices{width:100%;display:flex;flex-direction:column;gap:12px}
+.choice{width:100%;display:flex;align-items:center;gap:14px;text-align:right;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(20,40,70,.08);font:inherit;cursor:pointer}
+.choice .ci{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;flex:none;background:var(--info);color:var(--blue)}
+.choice.main{background:var(--blue);border-color:var(--blue);color:#fff}
+.choice.main .ci{background:rgba(255,255,255,.18);color:#fff}
+.choice .ct{flex:1;min-width:0;display:flex;flex-direction:column}
+.choice .ct b{font-size:20px;font-weight:700;line-height:1.3}
+.choice .ct small{font-size:14px;color:var(--mute);line-height:1.4}
+.choice.main .ct small{color:inherit;opacity:.85}
+.choice .chev{flex:none;opacity:.7}
+.pin{width:100%;display:flex;flex-direction:column;gap:10px;text-align:right}
+.pin label{font-weight:600;color:var(--ink)}
+.pin input{font-size:26px;letter-spacing:10px;text-align:center;padding:12px;border-radius:12px;width:100%;border:1px solid var(--line);background:var(--field);color:var(--ink);font-family:inherit}
+.pin .btn{padding:13px;font-size:17px;border-radius:12px}
+.pin .err{min-height:0;margin:0}
+.btn.wide{width:100%;margin-top:12px;background:var(--card);color:var(--ink);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;font-size:16px;border-radius:12px}
+.btn.wide svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* زرار «ضيف موديل جديد» في واجهة الموظف */
+.addBig{width:100%;max-width:720px;margin:0 auto 12px;display:flex;align-items:center;gap:14px;text-align:right;border:0;background:var(--blue);color:#fff;border-radius:16px;padding:18px 16px;font:inherit;cursor:pointer;box-shadow:0 3px 10px rgba(20,40,70,.18)}
+.addBig .ci{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;flex:none;background:rgba(255,255,255,.18)}
+.addBig .ci svg{width:32px;height:32px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.addBig .ct{flex:1;display:flex;flex-direction:column}
+.addBig .ct b{font-size:20px;font-weight:700}
+.addBig .ct small{font-size:14px;opacity:.88}
+.linkRow{max-width:720px;margin:-4px auto 12px;text-align:center}
+.linkRow button{border:0;background:none;color:var(--blue);font:inherit;font-size:14px;text-decoration:underline;cursor:pointer;padding:6px}
+/* الكاميرا (scan QR) */
+.dlg .box.scanBox{max-width:440px}
+.scan{position:relative;width:100%;aspect-ratio:1;background:#000;border-radius:14px;overflow:hidden}
+.scan video{width:100%;height:100%;object-fit:cover;display:block}
+.scan .frame{position:absolute;inset:16%;border:3px solid rgba(255,255,255,.95);border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.35)}
+.scan .frame.ok{border-color:#3ddc84}
+.scan-tip{font-size:14.5px;margin:10px 0 0;text-align:center;color:var(--ink)}
+.scan-tip.bad{color:#b3261e}
 .dlg .box.instBox{padding:0;overflow:auto}
 .dlg .box.instBox .hcard{margin:0;border-radius:16px}
 </style>
@@ -180,7 +222,7 @@ html[data-theme=dark] #themeBtn .moon,html:not([data-theme=dark]) #themeBtn .sun
 </head>
 <body>
 <header id="top">
-  <button id="backBtn" aria-label="رجوع للصفحة الرئيسية">→</button>
+  <button id="backBtn" aria-label="عودة" title="عودة">→</button>
   <div class="grow"><div class="t" id="title">عارض الموديلات</div><div class="s" id="sub">Middle East</div></div>
   <span class="badge" id="cached" hidden>متخزن على الموبايل</span>
   <button id="themeBtn" aria-label="فاتح / غامق" title="فاتح / غامق"><svg viewBox="0 0 24 24" class="moon"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><svg viewBox="0 0 24 24" class="sun"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg></button>
@@ -204,6 +246,35 @@ html[data-theme=dark] #themeBtn .moon,html:not([data-theme=dark]) #themeBtn .sun
 <div id="loupe"></div>
 <div id="mRes"></div>
 <div id="home"></div>
+<!-- شاشة البداية: الإدارة (المهندسين، بكلمة سر) / أنا موظف (من غير كلمة سر) -->
+<section id="start" aria-labelledby="stTitle">
+  <div class="st-in">
+    <div class="mark" aria-hidden="true">ME</div>
+    <h1 id="stTitle">عارض الموديلات <bdi>Middle East</bdi></h1>
+    <p class="st-sub">موديلات المشاريع <bdi>3D</bdi>: لف، وسكشن، وقياس بالمللي</p>
+    <div class="choices" id="stChoices">
+      <button class="choice main" id="stAdmin" type="button">
+        <span class="ci" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <span class="ct"><b>الإدارة</b><small id="stAdminSub">للمهندسين: رفع الموديلات وإدارتها، بكلمة سر</small></span>
+        <svg class="chev" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <button class="choice" id="stWorker" type="button">
+        <span class="ci" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20.5c.8-3.8 3.6-5.8 7-5.8s6.2 2 7 5.8"/></svg></span>
+        <span class="ct"><b>أنا موظف</b><small id="stWorkerSub">افتح الموديلات، وضيف موديل بالـ <bdi>QR</bdi></small></span>
+        <svg class="chev" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+    </div>
+    <form id="stPw" class="pin" hidden autocomplete="off">
+      <label for="stPwIn">كلمة سر الإدارة</label>
+      <input id="stPwIn" type="password" inputmode="numeric" autocomplete="off">
+      <p class="err" id="stPwErr" hidden></p>
+      <button class="btn" type="submit">دخول</button>
+      <button class="btn ghost" type="button" id="stPwBack">رجوع</button>
+    </form>
+    <button class="btn wide" id="stInstall" type="button" hidden><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>ثبّت التطبيق على الموبايل</button>
+    <button class="btn wide" id="stTheme" type="button"></button>
+  </div>
+</section>
 <div class="dlg" id="dlg"><div class="box" id="dlgBox"></div></div>
 <div id="toast"></div>
 
@@ -431,7 +502,7 @@ function toast(t, ms = 3000) { const el = $('toast'); el.textContent = t; el.cla
 function loadingMsg(t, pct) { $('ldMsg').textContent = t; if (pct !== undefined) $('ldBar').style.width = Math.round(pct) + '%'; }
 function fail(msg) {
   const ld = $('loading'); ld.style.display = 'flex';
-  $('ldMsg').innerHTML = '<div class="err" style="font-size:15px">' + esc(msg) + '</div><div style="margin-top:14px"><button class="btn" onclick="location.href=\'' + BASE + '\'">الصفحة الرئيسية</button></div>';
+  $('ldMsg').innerHTML = '<div class="err" style="font-size:15px">' + esc(msg) + '</div><div style="margin-top:14px"><button class="btn" onclick="location.href=\'' + BASE + '#worker\'">رجوع للموديلات</button></div>';
   $('ldBar').parentElement.style.display = 'none';
 }
 
@@ -451,7 +522,7 @@ async function openModel(id) {
   if (meta.need === 'pw') {
     await cacheDel(id); delete toks[id]; LS.set('me_toks', toks);
     const tok = await askModelPw(id, meta.name, !!(e && e.ver));
-    if (!tok) { location.href = BASE; return; }
+    if (!tok) { location.href = BASE + '#worker'; return; }
     toks[id] = tok; LS.set('me_toks', toks); return openModel(id);
   }
   if (!meta.ok) return fail('حصلت مشكلة في السيرفر: ' + (meta.err || ''));
@@ -496,7 +567,8 @@ async function loadBytes(bytes, entry) {
 
 // ---------------------------------------------------------------- نوافذ (dialogs)
 function dialog(html, cls = '') { $('dlgBox').className = 'box ' + cls; $('dlgBox').innerHTML = html; $('dlg').classList.add('show'); return $('dlgBox'); }
-function closeDialog() { $('dlg').classList.remove('show'); $('dlgBox').innerHTML = ''; $('dlgBox').className = 'box'; }
+let dlgOnClose = null;   // تنضيف وقت قفل النافذة (زي إطفاء الكاميرا)
+function closeDialog() { if (dlgOnClose) { const f = dlgOnClose; dlgOnClose = null; f(); } $('dlg').classList.remove('show'); $('dlgBox').innerHTML = ''; $('dlgBox').className = 'box'; }
 
 // ---------------------------------------------------------------- التثبيت كتطبيق
 // أندرويد/كمبيوتر: Chrome بيبعت beforeinstallprompt لو التطبيق مش متثبت، فبنظهر الزرار. آيفون: مفيش زرار من النظام، فبنشرح الخطوات.
@@ -537,9 +609,9 @@ async function doInstall() {
 }
 function instRefresh() {
   $('instBtn').classList.toggle('show', canInstall());
-  if (!canInstall()) { $('instCard')?.remove(); if ($('dlgBox').classList.contains('instBox')) closeDialog(); }
-  else if ($('home').classList.contains('show') && !$('instCard') && !sessionStorage.getItem('me_inst_x'))
-    $('home').insertAdjacentHTML('afterbegin', `<div class="hcard inst" id="instCard">${installHTML(true)}</div>`);
+  if (!canInstall() && $('dlgBox').classList.contains('instBox')) closeDialog();
+  // زرار «ثبّت التطبيق على الموبايل» في شاشة البداية (بيفتح نافذة الصور والخصائص)
+  $('stInstall').hidden = !canInstall() || !$('stPw').hidden;
 }
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEvt = e; instRefresh(); });
 window.addEventListener('appinstalled', () => { instEvt = null; instRefresh(); toast('التطبيق اتثبت. هتلاقيه على الشاشة الرئيسية'); });
@@ -574,35 +646,166 @@ function askModelPw(id, name, changed) {
 }
 
 // ---------------------------------------------------------------- الصفحة الرئيسية
+// 3 شاشات بالـ hash علشان زرار الرجوع بتاع الموبايل يشتغل طبيعي:
+//   (من غير hash) شاشة البداية: الإدارة / أنا موظف    #worker الموظف: ضيف موديل (scan) + الموديلات اللي على الموبايل
+//   #admin الإدارة (المهندسين): رفع الموديلات وإدارتها، بكلمة سر
+let homeView = 'start';
 async function showHome() {
   $('loading').remove();
+  addEventListener('hashchange', routeHome);
+  // لما ترجع من صفحة الموديل بزرار الرجوع، المتصفح ساعات بيرجّع الصفحة القديمة من ذاكرته: نرسم اللستة تاني علشان الجديد يظهر
+  addEventListener('pageshow', e => { if (e.persisted) routeHome(); });
+  routeHome();
+}
+function routeHome() {
+  const h = location.hash.slice(1);
+  if (h === 'worker') return showView('worker');
+  if (h === 'admin' && engTok()) return showView('admin');
+  showStart(h === 'admin');
+}
+function showStart(askPw) {
+  homeView = 'start'; closeDialog();
+  $('home').classList.remove('show'); $('start').classList.add('show'); $('backBtn').style.display = 'none';
   $('title').textContent = 'عارض الموديلات'; $('sub').textContent = 'Middle East';
-  $('home').classList.add('show');
+  const n = Object.keys(localIdx()).length;
+  $('stAdminSub').textContent = engTok() ? 'داخل كمهندس، دوس وادخل على طول' : 'للمهندسين: رفع الموديلات وإدارتها، بكلمة سر';
+  $('stWorkerSub').innerHTML = n ? n + ' موديل على الموبايل، وضيف موديل بالـ <bdi>QR</bdi>' : 'افتح الموديلات، وضيف موديل بالـ <bdi>QR</bdi>';
+  showPwForm(!!askPw);
+  syncStartBtns();
+}
+function showPwForm(on) {
+  $('stChoices').hidden = on; $('stPw').hidden = !on; $('stPwErr').hidden = true; $('stInstall').hidden = on || !canInstall();
+  if (on) { $('stPwIn').value = ''; setTimeout(() => $('stPwIn').focus({ preventScroll: true }), 50); }
+}
+function syncStartBtns() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  $('stTheme').innerHTML = dark ? '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>الوضع الفاتح'
+    : '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>الوضع الغامق';
+  $('stInstall').hidden = !$('stPw').hidden || !canInstall();
+}
+// الدخول للشاشات: من شاشة البداية بنعلّم إننا جينا منها، علشان «عودة» يرجع بـ history.back (زي زرار الموبايل)
+const goView = v => { if (location.hash.slice(1) === v) return routeHome(); sessionStorage.setItem('me_from_start', '1'); location.hash = v; };
+$('stWorker').onclick = () => goView('worker');
+$('stAdmin').onclick = () => { if (engTok()) goView('admin'); else showPwForm(true); };
+$('stPwBack').onclick = () => showPwForm(false);
+$('stPw').onsubmit = async ev => {
+  ev.preventDefault();
+  const pw = $('stPwIn').value.trim(), err = $('stPwErr'); if (!pw) return;
+  err.hidden = false; err.textContent = '...';
+  try {
+    const r = await api({ fn: 'login', pw });
+    if (r.ok) { LS.set('me_eng', { tok: r.tok, exp: r.exp }); err.hidden = true; goView('admin'); }
+    else err.textContent = 'كلمة السر مش صح، جرّب تاني.';
+  } catch (e) { err.textContent = 'مفيش نت. جرّب تاني.'; }
+};
+$('stInstall').onclick = () => installDialog();
+$('stTheme').onclick = () => { $('themeBtn').click(); syncStartBtns(); };
+function showView(v) {
+  homeView = v;
+  $('start').classList.remove('show'); $('home').classList.add('show'); $('backBtn').style.display = 'block';
+  $('title').textContent = 'عارض الموديلات'; $('sub').textContent = v === 'admin' ? 'الإدارة' : 'موظف';
   renderHome();
 }
+// ---------------------------------------------------------------- ضيف موديل: scan QR
+// الكاميرا الخلفية، والقارئ اللي جوه الموبايل (BarcodeDetector في أندرويد)، ولو مش موجود (آيفون) مكتبة jsQR (Apache-2.0) بتتحمّل وقتها.
+// الكود لازم يبقى لينك موديل من العارض (…/viewer/?p=<id>)، وبعدها الموديل بيتفتح وبيتخزن على الموبايل زي اللينك بالظبط.
+function modelIdFromText(txt) {
+  try {
+    const u = new URL(String(txt).trim(), BASE), id = u.searchParams.get('p');
+    const ours = u.host === location.host || /(^|\.)middle-east2018\.github\.io$/.test(u.host);
+    return ours && id && /^[A-Za-z0-9_-]{4,40}$/.test(id) ? id : null;
+  } catch (e) { return null; }
+}
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+async function qrDetector() {
+  if ('BarcodeDetector' in window) {
+    try {
+      if ((await BarcodeDetector.getSupportedFormats()).includes('qr_code')) {
+        const bd = new BarcodeDetector({ formats: ['qr_code'] });
+        return async v => { const r = await bd.detect(v); return r.length ? r[0].rawValue : null; };
+      }
+    } catch (e) {}
+  }
+  if (!window.jsQR) await loadScript('vendor/jsQR.js');
+  const c = document.createElement('canvas'), g = c.getContext('2d', { willReadFrequently: true });
+  return async v => {
+    const w = v.videoWidth, h = v.videoHeight; if (!w || !h) return null;
+    const k = Math.min(1, 720 / Math.max(w, h)); c.width = Math.round(w * k); c.height = Math.round(h * k);
+    g.drawImage(v, 0, 0, c.width, c.height);
+    const r = window.jsQR(g.getImageData(0, 0, c.width, c.height).data, c.width, c.height, { inversionAttempts: 'attemptBoth' });
+    return r ? r.data : null;
+  };
+}
+function openFoundModel(id) { toast('لقيت الموديل، بيفتح...'); setTimeout(() => { location.href = BASE + '?p=' + encodeURIComponent(id); }, 250); }
+async function scanQR() {
+  const b = dialog(`<h3>ضيف موديل جديد</h3><div class="scan"><video id="scV" playsinline muted autoplay></video><div class="frame" id="scF"></div></div>
+    <p class="scan-tip" id="scTip">بيشغّل الكاميرا...</p>
+    <div class="btns"><button class="btn ghost" id="scLink" type="button">عندي لينك</button><button class="btn ghost" id="scNo" type="button">إلغاء</button></div>`, 'scanBox');
+  let stream = null, stop = false, timer = 0;
+  const tip = (t, bad) => { const el = b.querySelector('#scTip'); if (el) { el.textContent = t; el.classList.toggle('bad', !!bad); } };
+  const end = () => { stop = true; clearTimeout(timer); if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; };
+  dlgOnClose = end;
+  b.querySelector('#scNo').onclick = closeDialog;
+  b.querySelector('#scLink').onclick = () => { closeDialog(); linkDialog(); };
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return tip('الموبايل ده مش بيسمح بالكاميرا هنا. استخدم «عندي لينك».', true);
+  try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }); }
+  catch (e) { return tip('الكاميرا مش متاحة. اسمح للتطبيق يستخدم الكاميرا من إعدادات المتصفح، أو استخدم «عندي لينك».', true); }
+  if (stop) return end();
+  const v = b.querySelector('#scV'); v.srcObject = stream; try { await v.play(); } catch (e) {}
+  tip('وجّه الكاميرا على الـ QR اللي على اللوحة');
+  let detect; try { detect = await qrDetector(); } catch (e) { end(); return tip('ما قدرتش أشغّل قارئ الـ QR. استخدم «عندي لينك».', true); }
+  let lastBad = '';
+  const tick = async () => {
+    if (stop) return;
+    let txt = null; try { txt = await detect(v); } catch (e) {}
+    if (txt) {
+      const id = modelIdFromText(txt);
+      if (id) { b.querySelector('#scF').classList.add('ok'); tip('لقيت الموديل ✓'); end(); setTimeout(() => { closeDialog(); openFoundModel(id); }, 300); return; }
+      if (txt !== lastBad) { lastBad = txt; tip('الكود ده مش موديل من عارض Middle East', true); }
+    }
+    timer = setTimeout(tick, 180);
+  };
+  tick();
+}
+function linkDialog() {
+  const b = dialog(`<h3>افتح موديل بلينك</h3><div class="fld"><label>حط اللينك اللي اتبعتلك</label><input type="text" id="lkIn" dir="ltr" placeholder="https://middle-east2018.github.io/viewer/?p=..."></div>
+    <div class="err" id="lkErr"></div><div class="btns"><button class="btn" id="lkOk" type="button">افتح</button><button class="btn ghost" id="lkNo" type="button">رجوع</button></div>`);
+  const inp = b.querySelector('#lkIn'); setTimeout(() => inp.focus(), 50);
+  const go = () => { const id = modelIdFromText(inp.value); if (!id) { b.querySelector('#lkErr').textContent = 'اللينك ده مش لينك موديل من العارض'; return; } closeDialog(); openFoundModel(id); };
+  b.querySelector('#lkOk').onclick = go; inp.onkeydown = ev => { if (ev.key === 'Enter') go(); };
+  b.querySelector('#lkNo').onclick = closeDialog;
+}
+
+function homeBack() {   // «عودة» فوق: يرجع لشاشة البداية
+  if (sessionStorage.getItem('me_from_start')) { sessionStorage.removeItem('me_from_start'); history.back(); }
+  else location.hash = '';
+}
 let engModels = null;
+const QR_ICON = '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M17 20h4v-3M14 20v.01"/></svg>';
 async function renderHome() {
+  if (homeView === 'start') return showStart(false);
   const I = localIdx(), ids = Object.keys(I).sort((a, b) => (I[b].opened || 0) - (I[a].opened || 0));
-  const et = engTok();
-  let h = (canInstall() && !sessionStorage.getItem('me_inst_x')) ? `<div class="hcard inst" id="instCard">${installHTML(true)}</div>` : '';
-  h += `<div class="hcard"><h3><span class="grow">الموديلات اللي على الموبايل ده</span></h3>`;
-  if (!ids.length) h += `<p>مفيش موديلات لسه. صوّر الـ QR اللي على اللوحة، أو افتح اللينك اللي اتبعتلك، والموديل هيتفتح ويتخزن هنا.</p>`;
-  ids.forEach(id => {
-    const e = I[id];
-    h += `<div class="mrow"><div class="nm"><b><bdi>${esc(e.name || id)}</bdi></b><small>${MB(e.size || 0)} · اتفتح ${fmtDate(e.opened)}</small></div>
-      <div class="acts"><button class="sbtn pri" data-open="${id}">افتح</button><button class="sbtn red" data-del="${id}">امسح من الموبايل</button></div></div>`;
-  });
-  h += `</div>`;
-  if (et) {
-    h += `<div class="hcard"><h3><span class="grow">المهندسين</span><button class="sbtn" id="engOut">خروج</button></h3>
+  let h = '';
+  if (homeView === 'worker') {
+    h += `<button class="addBig" id="scanBtn" type="button"><span class="ci" aria-hidden="true">${QR_ICON}</span><span class="ct"><b>ضيف موديل جديد</b><small>صوّر الـ <bdi>QR</bdi> اللي على اللوحة</small></span></button>
+      <div class="linkRow"><button type="button" id="linkBtn">عندك لينك بدل الـ <bdi>QR</bdi>؟</button></div>`;
+    h += `<div class="hcard"><h3><span class="grow">الموديلات اللي على الموبايل ده</span></h3>`;
+    if (!ids.length) h += `<p>مفيش موديلات لسه. دوس «ضيف موديل جديد» وصوّر الـ <bdi>QR</bdi> اللي على اللوحة، والموديل هيتفتح ويتخزن هنا.</p>`;
+    ids.forEach(id => {
+      const e = I[id];
+      h += `<div class="mrow"><div class="nm"><b><bdi>${esc(e.name || id)}</bdi></b><small>${MB(e.size || 0)} · اتفتح ${fmtDate(e.opened)}</small></div>
+        <div class="acts"><button class="sbtn pri" data-open="${id}">افتح</button><button class="sbtn red" data-del="${id}">امسح من الموبايل</button></div></div>`;
+    });
+    h += `</div>`;
+  } else {
+    if (!engTok()) return showStart(true);
+    h += `<div class="hcard"><h3><span class="grow">الإدارة</span><button class="sbtn" id="engOut">خروج</button></h3>
       <div class="btns" style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px"><button class="btn" id="upNew">ارفع موديل جديد</button></div>
       <div id="engList"><p>بيجيب الموديلات...</p></div></div>`;
-  } else {
-    h += `<div class="hcard"><h3>المهندسين</h3><p>رفع الموديلات وإدارتها للمهندسين بس.</p><div style="margin-top:8px"><button class="btn ghost" id="engIn">دخول المهندسين</button></div></div>`;
   }
   $('home').innerHTML = h;
   $('home').onclick = onHomeClick;
-  if (et) loadEngList();
+  if (homeView === 'admin') loadEngList();
 }
 async function onHomeClick(ev) {
   const t = ev.target.closest('button'); if (!t) return;
@@ -612,10 +815,9 @@ async function onHomeClick(ev) {
     if (await confirmBox('مسح الموديل من الموبايل', 'هيتمسح <bdi>' + esc(e?.name || '') + '</bdi> من الموبايل ده بس. تقدر تفتحه تاني من نفس اللينك أو الـ QR طول ما المشروع مفتوح.', 'امسح')) { await forget(t.dataset.del); renderHome(); toast('اتمسح من الموبايل'); }
     return;
   }
-  if (t.id === 'instX') { sessionStorage.setItem('me_inst_x', '1'); $('instCard')?.remove(); return; }
-  if (t.classList.contains('instGo')) return doInstall();
-  if (t.id === 'engIn') return engLogin();
-  if (t.id === 'engOut') { localStorage.removeItem('me_eng'); renderHome(); return; }
+  if (t.id === 'scanBtn') return scanQR();
+  if (t.id === 'linkBtn') return linkDialog();
+  if (t.id === 'engOut') { localStorage.removeItem('me_eng'); homeBack(); return; }
   if (t.id === 'upNew') return uploadDialog(null);
   if (t.id === 'reconvAll') return reconvertAll();
   const id = t.dataset.id, m = engModels && engModels.find(x => x.id === id); if (!m) return;
@@ -636,7 +838,7 @@ async function onHomeClick(ev) {
 async function engCall(q, ms) {
   try {
     const r = await api(Object.assign({ etok: engTok() }, q), ms);
-    if (r.err === 'auth') { localStorage.removeItem('me_eng'); toast('لازم تدخل تاني بكلمة سر المهندسين'); renderHome(); throw new Error('auth'); }
+    if (r.err === 'auth') { localStorage.removeItem('me_eng'); toast('لازم تدخل تاني بكلمة سر الإدارة'); if (homeView !== 'start') showStart(true); throw new Error('auth'); }
     if (!r.ok) throw new Error(r.err || (r.gone ? 'الموديل مش موجود' : 'error'));
     return r;
   } catch (e) { if (e instanceof Offline) toast('مفيش نت'); throw e; }
@@ -2031,7 +2233,13 @@ function applyTheme(t) {
 $('themeBtn').onclick = () => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('me_theme', t); applyTheme(t); };
 
 // ================================================================ تشغيل
-$('backBtn').onclick = () => { location.href = BASE; };
+// «عودة» فوق: في شاشات الموظف والإدارة بيرجع لشاشة البداية. في صفحة الموديل بيرجع للشاشة اللي فتحته منها
+// (زي زرار الموبايل)، ولو الموديل اتفتح من QR أو لينك من برا، بيروح لشاشة الموظف
+$('backBtn').onclick = () => {
+  if (!params.get('p') && !params.get('m')) return homeBack();
+  if (document.referrer && document.referrer.startsWith(BASE) && history.length > 1) history.back();
+  else location.href = BASE + '#worker';
+};
 // للتجربة على الجهاز بس: الوصول لدوال القياس من سكريبت الاختبار
 if (location.hostname === 'localhost') window.__dbg = { bodyMeshes, cacheOf, faceEnt, edgeEnt, single, pair, entLabel, contourEnt, computeContours, get contours() { return contours; },
   cutAt(d, s) { cut = { d: new THREE.Vector3(...d).normalize(), s, kind: 'line', flip: false }; cutActive = true; applyCut(); computeContours(); } };
